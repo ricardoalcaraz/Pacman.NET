@@ -7,8 +7,7 @@ namespace Pacman.NET.Services;
 
 public interface IPacmanService
 {
-    IAsyncEnumerable<string> AddToRepositoryWithOutputStream(FileInfo fileInfo, CancellationToken ctx = default);
-    Task<string> AddToRepository(FileInfo fileInfo, CancellationToken ctx = default);
+    AddRepoResponse AddPackage(Stream packageStream, CancellationToken ctx = default);
     Task<Stream> GetPackageStream(string path, CancellationToken ctx);
 }
 
@@ -53,28 +52,51 @@ public class PacmanService : IPacmanService
     }
 
 
-    public async Task<string> AddToRepository(FileInfo fileInfo, CancellationToken ctx = default)
+    public AddRepoResponse AddPackage(Stream packageStream, CancellationToken ctx = default)
     {
         using var proc = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = "/usr/bin/repo-add",
-                //Arguments = $"{_pacmanOptions.RepoName} {fileInfo.FullName}",
+                Arguments = "--verify -n --sign --prevent-downgrade",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 CreateNoWindow = true
             }
         };
-
         proc.Start();
+        var exitCode = proc.ExitCode;
+        if (exitCode > 0)
+        {
+            return new AddRepoResponse
+            {
+                IsSuccessful = 0,
+                Output = proc.StandardError
+            };
+        }
 
-        var output = await proc.StandardOutput.ReadToEndAsync(ctx);
-
-        return output;
+        return new AddRepoResponse
+        {
+            IsSuccessful = 0,
+            Output = proc.StandardOutput
+        };
     }
 
+    private async IAsyncEnumerable<string> ReadOutputStream(StreamReader outputStream, CancellationToken ctx)
+    {
+        while (!outputStream.EndOfStream)
+        {
+            ctx.ThrowIfCancellationRequested();
+            var outputLine = await outputStream.ReadLineAsync(ctx);
+            _logger.LogDebug("{Output}", outputLine);
+            yield return outputLine ?? string.Empty;
+        }
+    }
 
+    
+    
     public async Task<Stream> GetPackageStream(string path, CancellationToken ctx)
     {
         var requestUri = GetMirror(path);
@@ -123,4 +145,10 @@ public record PacmanPackageFile : IFileInfo
     public string Name => _fileInfo.Name;
     public DateTimeOffset LastModified => _fileInfo.LastWriteTime;
     public bool IsDirectory => false;
+}
+
+public record AddRepoResponse()
+{
+    public required int IsSuccessful { get; set; }
+    public required StreamReader Output { get; set; }
 }

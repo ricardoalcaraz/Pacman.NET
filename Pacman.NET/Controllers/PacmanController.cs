@@ -34,8 +34,15 @@ public class PacmanController : ControllerBase
             await packageFile.CopyToAsync(stream);
         }
 
-        var output = await _pacmanService.AddToRepository(new FileInfo(filePath));
+        var output = _pacmanService.AddPackage(packageFile.OpenReadStream());
         _logger.LogInformation("{Line}", output);
-        return Ok(new { packageFile.Length, Path = filePath });
+        
+        //return 201
+        return Ok(new
+        {
+            packageFile.Length, 
+            Path = filePath, 
+            Output = await output.Output.ReadToEndAsync()
+        });
     }
 }

@@ -17,8 +17,11 @@ public static class WebApplicationExtensions
             .BindConfiguration("ApplicationOptions")
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        
+        
         builder.Services.AddTransient<IPacmanService, PacmanService>();
         builder.Services.AddHostedService<MirrorSyncService>();
+        builder.Services.AddHostedService<CustomRepoService>();
         builder.Services.AddHttpClient();
 
         return builder;

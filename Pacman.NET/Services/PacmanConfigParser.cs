@@ -12,6 +12,8 @@ public class PacmanConfigParser
         _logger = logger;
         _options = options;
     }
+    
+    
     public async Task<Dictionary<string, string>> ParseConfig()
     {
         var configFileLocation = "/etc/pacman.conf";
