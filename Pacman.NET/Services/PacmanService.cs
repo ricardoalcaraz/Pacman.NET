@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
 
 namespace Pacman.NET.Services;
 

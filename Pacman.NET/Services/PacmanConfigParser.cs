@@ -5,25 +5,18 @@ public record PacmanConfigSection(string Name, List<string> Settings);
 public class PacmanConfigParser
 {
     private readonly ILogger<PacmanConfigParser> _logger;
+    private readonly IOptions<PacmanOptions> _options;
 
-    public PacmanConfigParser(ILogger<PacmanConfigParser> logger)
+    public PacmanConfigParser(ILogger<PacmanConfigParser> logger, IOptions<PacmanOptions> options)
     {
         _logger = logger;
+        _options = options;
     }
     public async Task<Dictionary<string, string>> ParseConfig()
     {
         var configFileLocation = "/etc/pacman.conf";
         var configStream = File.OpenText(configFileLocation);
-        var pacmanConfigSetting = new PacmanOptions
-        {
-            SyncDirectory = null,
-            EnableReverseProxy = false,
-            EnableCache = false,
-            CacheDirectory = null,
-            LogDirectory = null,
-            MirrorUrl = null,
-            Repos = null
-        };
+        var pacmanConfigSetting = _options.Value;
         _logger.LogInformation("Found setting for {Section} of {Setting}", "", pacmanConfigSetting);
         var currentState = "ParseOption";
         var allSettings = new Dictionary<string, Dictionary<string, string>>();
@@ -125,7 +118,7 @@ public class PacmanConfigParser
     public string GetSectionName(string sectionName) => sectionName[1..^1];
 }
 
-public record PacmanConfigOption(string Name, string? Value);
+public record PacmanConfig(string Name, string? Value);
 
 public enum ConfigSettingType
 {

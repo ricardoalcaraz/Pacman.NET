@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace Pacman.NET.Controllers;
 

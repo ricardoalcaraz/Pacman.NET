@@ -1,5 +1,4 @@
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
+using Pacman.NET.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,42 +12,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddTransient<IPacmanService, PacmanService>();
-builder.Services.AddOptions<PacmanOptions>()
-    .BindConfiguration("Pacman")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-builder.Services.AddHttpClient();
-
-
-builder.Services.AddTransient<IPacmanService, PacmanService>();
-builder.Services.AddHostedService<MirrorSyncService>();
-
-
-var fileProvider = builder.Environment.IsDevelopment()
-    ? new PhysicalFileProvider(builder.Environment.ContentRootPath)
-    : new PhysicalFileProvider("/data/pacman");
-
-builder.Services.AddOptions<PackageCacheOptions>()
-    .Configure(opt =>
-    {
-        opt.SavePath = "/data/pacman";
-        opt.FileProvider = fileProvider;
-    });
-builder.Services.AddOptions<FileServerOptions>()
-    .Configure<IOptions<PackageCacheOptions>>((opt, cacheOptions) =>
-    {
-        opt.RequestPath = "/archlinux";
-        opt.FileProvider = cacheOptions.Value.FileProvider;
-        opt.EnableDefaultFiles = false;
-        opt.RedirectToAppendTrailingSlash = false;
-        opt.EnableDirectoryBrowsing = true;
-        opt.StaticFileOptions.ServeUnknownFileTypes = true;
-        opt.DirectoryBrowserOptions.RequestPath = "/archlinux";
-        opt.StaticFileOptions.DefaultContentType = "application/octet-stream";
-    });
-
-
 
 var app = builder.Build();
 
@@ -61,20 +24,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 
-app.UseFileServer(new FileServerOptions
-{
-    RequestPath = "/archlinux",
-    FileProvider = fileProvider,
-    EnableDefaultFiles = false,
-    RedirectToAppendTrailingSlash = false,
-    EnableDirectoryBrowsing = true,
-    StaticFileOptions =
-    {
-        DefaultContentType = "application/octet-stream",
-        ServeUnknownFileTypes = true
-    }
-});
-
+app.UsePacmanCache();
 
 app.MapControllers();
 

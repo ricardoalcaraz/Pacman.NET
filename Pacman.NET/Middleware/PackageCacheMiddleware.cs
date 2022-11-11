@@ -3,7 +3,6 @@ using System.IO.Pipelines;
 using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
 
 namespace Pacman.NET.Middleware;
 
