@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Pacman.NET.Options;
-using Pacman.NET.Services;
 
 namespace Pacman.NET.Controllers;
 

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
-using Pacman.NET.Options;
 
 namespace Pacman.NET.Utilities;
 

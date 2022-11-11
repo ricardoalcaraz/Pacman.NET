@@ -1,5 +1,3 @@
-using Pacman.NET.Options;
-
 namespace Pacman.NET.Services;
 
 

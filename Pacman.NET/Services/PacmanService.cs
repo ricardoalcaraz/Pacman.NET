@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
-using Pacman.NET.Options;
 
 namespace Pacman.NET.Services;
 

@@ -9,10 +9,10 @@ public class MirrorSyncService : BackgroundService
     private List<MirrorInfo> _fastestMirrors;
 
 
-    public MirrorSyncService(IHttpClientFactory clientFactory, List<MirrorInfo> fastestMirrors)
+    public MirrorSyncService(IHttpClientFactory clientFactory)
     {
         _clientFactory = clientFactory;
-        _fastestMirrors = fastestMirrors;
+        _fastestMirrors = new List<MirrorInfo>();
     }
 
 

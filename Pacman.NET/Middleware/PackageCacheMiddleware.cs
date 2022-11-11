@@ -4,8 +4,6 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
-using Pacman.NET.Options;
-using Pacman.NET.Services;
 
 namespace Pacman.NET.Middleware;
 
