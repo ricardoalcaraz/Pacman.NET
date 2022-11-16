@@ -4,6 +4,7 @@ namespace Pacman.NET.Options;
 
 public record PacmanOptions
 {
+    public required string BaseAddress { get; init; }
     public required string Configuration { get; init; }
     public required string CacheDirectory { get; init; }
     public required string DbDirectory { get; init; }
