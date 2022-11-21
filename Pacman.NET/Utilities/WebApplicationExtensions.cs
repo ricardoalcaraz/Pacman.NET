@@ -33,7 +33,7 @@ public static class WebApplicationExtensions
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
         //builder.Services.AddHostedService<CustomRepoService>();
         builder.Services.AddHttpClient();
-
+        builder.Services.AddTransient<PacmanService>();
         return builder;
     }
     
@@ -41,6 +41,7 @@ public static class WebApplicationExtensions
     {
         var pacmanOptions = app.Services.GetRequiredService<IOptions<PacmanOptions>>().Value;
 
+        var cacheDir = Directory.CreateDirectory(pacmanOptions.CacheDirectory);
         app.UseMiddleware<PackageCacheMiddleware>();
 
         app.UseFileServer(new FileServerOptions

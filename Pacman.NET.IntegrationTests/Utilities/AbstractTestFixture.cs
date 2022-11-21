@@ -1,15 +1,14 @@
 namespace Pacman.NET.IntegrationTests.Utilities;
 
-[TestFixture]
-public abstract class AbstractTestFixture
+public class WebAppFixture
 {
-    protected WebApplicationFactory<PacmanOptions> WebAppFactory = null!;
+    public WebApplicationFactory<PacmanOptions> WebAppFactory = null!;
     protected HttpClient Client => WebAppFactory.CreateDefaultClient();
 
     [OneTimeSetUp]
     public void Setup()
     {
-        WebAppFactory = CreateWebAppFactory();
+        WebAppFactory = new CustomWebAppFactory();
     }
 
 
@@ -18,28 +17,24 @@ public abstract class AbstractTestFixture
     {
         await WebAppFactory.DisposeAsync();
     }
-
-    protected virtual WebApplicationFactory<PacmanOptions> CreateWebAppFactory()
-    {
-        return new WebApplicationFactory<PacmanOptions>();
-    }
 }
 
 public class CustomWebAppFactory : WebApplicationFactory<PacmanOptions>
 {
-    protected override IWebHostBuilder CreateWebHostBuilder()
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        return base.CreateWebHostBuilder()!
-            .ConfigureServices(s =>
+        base.ConfigureWebHost(builder);
+        builder.ConfigureServices(s =>
+        {
+            var currentDir = Directory.GetCurrentDirectory();
+            var options = new OptionsWrapper<PacmanOptions>(new PacmanOptions
             {
-                s.AddAuthentication(opt =>
-                {
-                    opt.DefaultScheme = "test";
-                    opt.AddScheme("test", b =>
-                    {
-                        
-                    });
-                });
+                BaseAddress = "/archlinux",
+                Configuration = "",
+                CacheDirectory = $"{currentDir}/Content",
+                DbDirectory = $"{currentDir}/Db",
             });
+            s.AddSingleton<IOptions<PacmanOptions>>(options);
+        });
     }
 }

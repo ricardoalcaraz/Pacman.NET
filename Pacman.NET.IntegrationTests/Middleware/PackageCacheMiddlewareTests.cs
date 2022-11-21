@@ -1,12 +1,11 @@
-using Pacman.NET.IntegrationTests.Utilities;
-
 namespace Pacman.NET.IntegrationTests.Middleware;
 
-public class PackageCacheMiddlewareTests : AbstractTestFixture
+public class PackageCacheMiddlewareTests : WebAppFixture
 {
-    public PackageCacheMiddlewareTests()
+
+    [Test]
+    public async Task GetPackage_PackageDoesNotExist_ShouldProxyRequest()
     {
-        WebAppFactory = WebAppFactory
-            .WithWebHostBuilder(b => { b.Configure(c => { c.UseMiddleware<PackageCacheMiddleware>(); }); });
+        
     }
 }

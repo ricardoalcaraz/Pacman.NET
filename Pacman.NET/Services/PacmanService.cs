@@ -35,7 +35,8 @@ public class PacmanService : IPacmanService
     {
         var startInfo = new ProcessStartInfo
         {
-            FileName = "/usr/bin/repo-elephant"
+            FileName = "/usr/bin/repo-elephant",
+            RedirectStandardOutput = true
         };
         _repoAddProcess.StartInfo = startInfo;
         try

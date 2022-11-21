@@ -3,7 +3,7 @@ using Pacman.NET.IntegrationTests.Utilities;
 
 namespace Pacman.NET.IntegrationTests;
 
-public class PackageControllerTests : AbstractTestFixture
+public class PackageControllerTests : WebAppFixture
 {
     [Test]
     public async Task UploadPackage_ValidPackage_ShouldSucceed()
