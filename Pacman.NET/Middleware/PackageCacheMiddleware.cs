@@ -66,13 +66,8 @@ public class PackageCacheMiddleware
                 if (!fileInfo.Exists || isDb)
                 {
                     _logger.LogWarning("No cache file found for {Name}, proxying request", fileInfo.Name);
-                    
-                    
-                        var tempFile = await DownloadPacmanPackage(ctx, ctx.RequestAborted);
-                        if (ctx.Response.StatusCode == 200)
-                        {
-                            await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
-                        }
+                    await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
+                    await DownloadPacmanPackage(ctx, fileStream);
                 }
                 else if (fileInfo.Exists)
                 {
@@ -161,17 +156,15 @@ public class PackageCacheMiddleware
     }
 
 
-    public async Task<FileInfo> DownloadPacmanPackage(HttpContext context, CancellationToken ctx)
+    public async Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
     {
-        var tempFileName = Path.GetTempFileName();
         var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
-        var body = new PacmanPackageBody(originalBody, tempFileName);
+        var body = new PacmanPackageBody(originalBody, cacheStream);
         context.Features.Set<IHttpResponseBodyFeature>(body);
         context.Response.ContentType = "application/octet-stream";
      
         await _next(context);
-
-        return new FileInfo(tempFileName);
+        //context.Features.Set(originalBody);
     }
     
     

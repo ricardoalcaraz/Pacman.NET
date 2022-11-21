@@ -11,11 +11,10 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
     private FileStream _fileStream;
     private PipeWriter? _pipeAdapter;
 
-    public PacmanPackageBody(IHttpResponseBodyFeature innerBodyFeature, string filePath)
+    public PacmanPackageBody(IHttpResponseBodyFeature innerBodyFeature, FileStream fileStream)
     {
         _innerBodyFeature = innerBodyFeature;
-        _filePath = filePath;
-        _fileStream = new FileStream(_filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
+        _fileStream = fileStream;
     }
 
 
@@ -45,8 +44,8 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
         await _fileStream.FlushAsync();
     }
 
-    public Stream Stream => _innerBodyFeature.Stream;
-    public PipeWriter Writer => _innerBodyFeature.Writer;
+    public Stream Stream => this;
+    public PipeWriter Writer => PipeWriter.Create(_innerBodyFeature.Stream, new StreamPipeWriterOptions(leaveOpen: true));
     
     public override void Flush()
     {
@@ -63,39 +62,40 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
     public override int Read(byte[] buffer, int offset, int count)
     {
         _fileStream.Read(buffer, offset, count);
-        return Stream.Read(buffer, offset, count);
+        return _innerBodyFeature.Stream.Read(buffer, offset, count);
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        return Stream.Seek(offset, origin);
+        return _innerBodyFeature.Stream.Seek(offset, origin);
     }
 
     public override void SetLength(long value)
     {
-        Stream.SetLength(value);
+        _innerBodyFeature.Stream.SetLength(value);
         _fileStream.SetLength(value);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
     {
-        Stream.Write(buffer, offset, count);
+        _innerBodyFeature.Stream.Write(buffer, offset, count);
         _fileStream.Write(buffer, offset, count);
     }
 
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ctx)
     {
-        await _fileStream.WriteAsync(buffer, offset, count, cancellationToken);
-        await Stream.WriteAsync(buffer, offset, count, cancellationToken);
+        var memoryBuffer = buffer.AsMemory(offset, count);
+        await _fileStream.WriteAsync(memoryBuffer, ctx);
+        await _innerBodyFeature.Stream.WriteAsync(memoryBuffer, ctx);
     }
 
-    public override bool CanRead => Stream.CanRead;
-    public override bool CanSeek => Stream.CanSeek;
-    public override bool CanWrite => Stream.CanWrite;
-    public override long Length => Stream.Length;
+    public override bool CanRead => _innerBodyFeature.Stream.CanRead;
+    public override bool CanSeek => _innerBodyFeature.Stream.CanSeek;
+    public override bool CanWrite => _innerBodyFeature.Stream.CanWrite;
+    public override long Length => _innerBodyFeature.Stream.Length;
     public override long Position
     {
-        get => Stream.Position;
-        set => Stream.Position = value;
+        get => _innerBodyFeature.Stream.Position;
+        set => _innerBodyFeature.Stream.Position = value;
     }
 }
