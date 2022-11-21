@@ -43,15 +43,14 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 
     public async Task CompleteAsync()
     {
-        await _innerBodyFeature.Stream.DisposeAsync();
+        await _innerBodyFeature.Stream.FlushAsync();
+        await _fileStream.FlushAsync();
         await _fileStream.DisposeAsync();
     }
 
-
-    public Stream Stream => _fileStream;
-
-
-    public PipeWriter Writer => _pipeAdapter ??= PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
+    public Stream Stream => _innerBodyFeature.Stream;
+    public PipeWriter Writer => _innerBodyFeature.Writer;
+    
     public override void Flush()
     {
         _fileStream.Flush();
@@ -69,11 +68,6 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
         throw new NotImplementedException();
     }
 
-    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
     public override long Seek(long offset, SeekOrigin origin)
     {
         throw new NotImplementedException();
@@ -81,17 +75,22 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 
     public override void SetLength(long value)
     {
-        throw new NotImplementedException();
+        Stream.SetLength(value);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
     {
-        throw new NotImplementedException();
+        Stream.Write(buffer, offset, count);
+        _fileStream.Write(buffer, offset, count);
     }
 
-    public override bool CanRead { get; }
-    public override bool CanSeek { get; }
-    public override bool CanWrite { get; }
-    public override long Length { get; }
-    public override long Position { get; set; }
+    public override bool CanRead => Stream.CanRead;
+    public override bool CanSeek => Stream.CanSeek;
+    public override bool CanWrite => Stream.CanWrite;
+    public override long Length => Stream.Length;
+    public override long Position
+    {
+        get => Stream.Position;
+        set => Stream.Position = value;
+    }
 }
