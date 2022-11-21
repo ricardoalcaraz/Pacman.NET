@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Pacman.NET.Middleware;
 
-public class PacmanPackageBody : IHttpResponseBodyFeature
+public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 {
     private readonly HttpContext _context;
     private readonly string _filePath;
@@ -12,12 +12,12 @@ public class PacmanPackageBody : IHttpResponseBodyFeature
     private FileStream _fileStream;
     private PipeWriter? _pipeAdapter;
 
-
     public PacmanPackageBody(HttpContext context, IHttpResponseBodyFeature innerBodyFeature, string filePath)
     {
         _context = context;
         _innerBodyFeature = innerBodyFeature;
         _filePath = filePath;
+        _fileStream = new FileStream(_filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
     }
 
 
@@ -27,21 +27,23 @@ public class PacmanPackageBody : IHttpResponseBodyFeature
     }
 
 
-    public Task StartAsync(CancellationToken cancellationToken = new())
+    public async Task StartAsync(CancellationToken cancellationToken = new())
     {
-        _fileStream = new FileStream(_filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
-        return Task.CompletedTask;
+        await _fileStream.FlushAsync(cancellationToken);
+        await _innerBodyFeature.StartAsync(cancellationToken);
     }
 
 
-    public Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = new())
+    public async Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = new())
     {
-        return _innerBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
+        await _fileStream.FlushAsync(cancellationToken);
+        await _innerBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
     }
 
 
     public async Task CompleteAsync()
     {
+        await _innerBodyFeature.Stream.DisposeAsync();
         await _fileStream.DisposeAsync();
     }
 
@@ -50,4 +52,46 @@ public class PacmanPackageBody : IHttpResponseBodyFeature
 
 
     public PipeWriter Writer => _pipeAdapter ??= PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
+    public override void Flush()
+    {
+        _fileStream.Flush();
+        _innerBodyFeature.Stream.Flush();
+    }
+
+    public override async Task FlushAsync(CancellationToken cancellationToken)
+    {
+        await _fileStream.FlushAsync(cancellationToken);
+        await _innerBodyFeature.Stream.FlushAsync(cancellationToken);
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void SetLength(long value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override bool CanRead { get; }
+    public override bool CanSeek { get; }
+    public override bool CanWrite { get; }
+    public override long Length { get; }
+    public override long Position { get; set; }
 }

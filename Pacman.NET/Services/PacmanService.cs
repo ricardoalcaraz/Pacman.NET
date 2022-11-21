@@ -5,18 +5,20 @@ using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
 
-public interface IPacmanService
+public interface IPacmanService : IDisposable
 {
     AddRepoResponse AddPackage(Stream packageStream, CancellationToken ctx = default);
     Task<Stream> GetPackageStream(string path, CancellationToken ctx);
+    Task<string> TestDependencies(CancellationToken ctx);
 }
 
 public class PacmanService : IPacmanService
 {
+    private const string REPO_ADD_BIN = "/usr/bin/repo-add";
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<PacmanService> _logger;
     private readonly PacmanOptions _pacmanOptions;
-
+    private readonly Process _repoAddProcess = new();
     private readonly ConcurrentDictionary<string, FileInfo> packageLock = new();
     private volatile bool _isDownloading;
 
@@ -29,26 +31,50 @@ public class PacmanService : IPacmanService
     }
 
 
-    public async IAsyncEnumerable<string> AddToRepositoryWithOutputStream(FileInfo fileInfo, [EnumeratorCancellation] CancellationToken ctx = default)
+    public async Task<string> TestDependencies(CancellationToken ctx = default)
     {
-        using var proc = new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "/usr/bin/repo-add",
-                //Arguments = $"{_pacmanOptions.RepoName} {fileInfo.FullName}",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            }
+            FileName = "/usr/bin/repo-elephant"
         };
-
-        proc.Start();
-        string? output;
-        while (!string.IsNullOrEmpty(output = await proc.StandardOutput.ReadLineAsync(ctx)))
+        _repoAddProcess.StartInfo = startInfo;
+        try
         {
-            yield return output;
+            if (_repoAddProcess.Start())
+            {
+                await _repoAddProcess.WaitForExitAsync(ctx);
+                var elephant = await _repoAddProcess.StandardOutput.ReadToEndAsync(ctx);
+                return elephant;
+            }
+
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to verify existence of pacman");
+        }
+        
+        return string.Empty;
+    }
+    
+    
+    public IAsyncEnumerable<string> AddToRepositoryWithOutputStream(FileInfo fileInfo, CancellationToken ctx = default)
+    {
+        if (!File.Exists(REPO_ADD_BIN))
+        {
+            throw new InvalidOperationException("The repo-add executable does not exist!");
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = REPO_ADD_BIN,
+            //Arguments = $"{_pacmanOptions.RepoName} {fileInfo.FullName}",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            CreateNoWindow = true
+        };
+        _repoAddProcess.StartInfo = startInfo;
+        
+        return ReadOutputStream(_repoAddProcess.StandardOutput, ctx);
     }
 
 
@@ -58,7 +84,7 @@ public class PacmanService : IPacmanService
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "/usr/bin/repo-add",
+                FileName = REPO_ADD_BIN,
                 Arguments = "--verify -n --sign --prevent-downgrade",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -72,15 +98,17 @@ public class PacmanService : IPacmanService
         {
             return new AddRepoResponse
             {
-                IsSuccessful = 0,
-                Output = proc.StandardError
+                ExitCode = 0,
+                Output = proc.StandardError,
+                Signature = string.Empty
             };
         }
 
         return new AddRepoResponse
         {
-            IsSuccessful = 0,
-            Output = proc.StandardOutput
+            ExitCode = 0,
+            Output = proc.StandardOutput,
+            Signature = string.Empty
         };
     }
 
@@ -93,6 +121,7 @@ public class PacmanService : IPacmanService
             _logger.LogDebug("{Output}", outputLine);
             yield return outputLine ?? string.Empty;
         }
+        await _repoAddProcess.WaitForExitAsync(ctx);
     }
 
     
@@ -119,6 +148,11 @@ public class PacmanService : IPacmanService
     {
         //pick a mirror using the round robin approach
         return new Uri($"https://mirrors.bloomu.edu{path}");
+    }
+
+    public void Dispose()
+    {
+        _repoAddProcess.Dispose();
     }
 }
 
@@ -147,8 +181,9 @@ public record PacmanPackageFile : IFileInfo
     public bool IsDirectory => false;
 }
 
-public record AddRepoResponse()
+public record AddRepoResponse
 {
-    public required int IsSuccessful { get; set; }
-    public required StreamReader Output { get; set; }
+    public required int ExitCode { get; init; }
+    public required StreamReader Output { get; init; }
+    public required string Signature { get; init; }
 }

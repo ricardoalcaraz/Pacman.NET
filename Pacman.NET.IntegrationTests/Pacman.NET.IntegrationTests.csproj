@@ -27,4 +27,8 @@
       <ProjectReference Include="..\Pacman.NET\Pacman.NET.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Config" />
+    </ItemGroup>
+
 </Project>

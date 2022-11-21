@@ -17,8 +17,8 @@ public class PackageCacheMiddleware
     private readonly RequestDelegate _next;
     private readonly IPacmanService _pacmanService;
     private readonly IMemoryCache _memoryCache;
-    private readonly IOptions<SlidingWindowRateLimiterOptions> options;
-    private PhysicalFileProvider _fileProvider;
+    private readonly IOptions<SlidingWindowRateLimiterOptions> _rateLimiterOptions;
+    private readonly PhysicalFileProvider _fileProvider;
 
 
     public PackageCacheMiddleware(RequestDelegate next,
@@ -61,6 +61,8 @@ public class PackageCacheMiddleware
                     await _next(ctx);
                     return;
                 }
+                
+                //stream downloaded file to response body
                 if (!fileInfo.Exists || isDb)
                 {
                     _logger.LogWarning("No cache file found for {Name}, proxying request", fileInfo.Name);
@@ -69,9 +71,11 @@ public class PackageCacheMiddleware
                         var tempFile = await DownloadPacmanPackage(ctx, ctx.RequestAborted);
                         if (ctx.Response.StatusCode == 200)
                         {
-                            await ctx.Response.StartAsync();
                             var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
                             var responseStream = tempFile.OpenRead();
+                            ctx.Response.ContentType = "application/octet-stream";
+                            ctx.Response.ContentLength = responseStream.Length;
+                            await ctx.Response.StartAsync();
 
                             var bufferSize = 1024 * 16;
                             var bytesRead = 0;
@@ -87,7 +91,15 @@ public class PackageCacheMiddleware
                             } while (bytesRead > 0);
                         }
                 }
-                //await ctx.Response.SendFileAsync(fileInfo);
+                else if (fileInfo.Exists)
+                {
+                    ctx.Response.ContentLength = fileInfo.Length;
+                    await SetHeaders(ctx);
+                    await ctx.Response.StartAsync();
+
+                    await ctx.Response.SendFileAsync(fileInfo);
+
+                }
 
                 if (isDb)
                 {
@@ -120,12 +132,12 @@ public class PackageCacheMiddleware
     }
 
 
-    private void SetHeaders(HttpContext context)
+    private async Task SetHeaders(HttpContext ctx)
     {
-        if (!context.Response.HasStarted)
+        if (!ctx.Response.HasStarted)
         {
-            context.Response.StatusCode = (int)HttpStatusCode.OK;
-            context.Response.ContentType = "application/octet-stream";
+            ctx.Response.ContentType = "application/octet-stream";
+            await ctx.Response.StartAsync();
         }
     }
 
@@ -134,7 +146,7 @@ public class PackageCacheMiddleware
     {
         var enableRateLimitingAttribute = context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>();
 
-        var slidingWindow = new SlidingWindowRateLimiter(options.Value);
+        var slidingWindow = new SlidingWindowRateLimiter(_rateLimiterOptions.Value);
 
         //represents the total size of the file
         var permitCount = 25;
@@ -143,7 +155,7 @@ public class PackageCacheMiddleware
 
         var tempFileName = Path.GetTempFileName();
         await using var fileStream = File.OpenWrite(tempFileName);
-        SetHeaders(context);
+        await SetHeaders(context);
 
         var bufferSize = 1024 * 16;
         var totalBytesProcessed = 0;
@@ -174,16 +186,12 @@ public class PackageCacheMiddleware
         context.Features.Set<IHttpResponseBodyFeature>(body);
                     
         await _next(context);
-        var statusCode = context.Response.StatusCode;
         await tempFileStream.FlushAsync(ctx);
-        var contentType = context.Response.ContentType;
         context.Features.Set(body.PriorFeature);
 
         if (!context.Response.HasStarted)
         {
-            context.Response.StatusCode = statusCode;
             context.Response.ContentType = "application/octet-stream";
-            context.Response.ContentLength = tempFileStream.Length;
         }
 
         return new FileInfo(tempFileName);
