@@ -71,7 +71,7 @@ public class PackageCacheMiddleware
                         var tempFile = await DownloadPacmanPackage(ctx, ctx.RequestAborted);
                         if (ctx.Response.StatusCode == 200)
                         {
-                            var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
+                            await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
                             var responseStream = tempFile.OpenRead();
                             ctx.Response.ContentType = "application/octet-stream";
                             ctx.Response.ContentLength = responseStream.Length;
@@ -93,8 +93,8 @@ public class PackageCacheMiddleware
                 }
                 else if (fileInfo.Exists)
                 {
+                    ctx.Response.ContentType = "application/octet-stream";
                     ctx.Response.ContentLength = fileInfo.Length;
-                    await SetHeaders(ctx);
                     await ctx.Response.StartAsync();
 
                     await ctx.Response.SendFileAsync(fileInfo);
