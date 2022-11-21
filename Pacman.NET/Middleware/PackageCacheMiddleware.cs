@@ -72,23 +72,6 @@ public class PackageCacheMiddleware
                         if (ctx.Response.StatusCode == 200)
                         {
                             await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
-                            var responseStream = tempFile.OpenRead();
-                            ctx.Response.ContentType = "application/octet-stream";
-                            ctx.Response.ContentLength = responseStream.Length;
-                            await ctx.Response.StartAsync();
-
-                            var bufferSize = 1024 * 16;
-                            var bytesRead = 0;
-                            do
-                            {
-                                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-                                bytesRead = await responseStream.ReadAsync(buffer, ctx.RequestAborted);
-                                var dataReceived = buffer.AsMemory(0, bytesRead);
-
-                                await fileStream.WriteAsync(dataReceived, ctx.RequestAborted);
-                                await ctx.Response.BodyWriter.WriteAsync(dataReceived, ctx.RequestAborted);
-                                ArrayPool<byte>.Shared.Return(buffer);
-                            } while (bytesRead > 0);
                         }
                 }
                 else if (fileInfo.Exists)
@@ -181,19 +164,12 @@ public class PackageCacheMiddleware
     public async Task<FileInfo> DownloadPacmanPackage(HttpContext context, CancellationToken ctx)
     {
         var tempFileName = Path.GetTempFileName();
-        await using var tempFileStream = File.OpenWrite(tempFileName);
-        var originalBody = context.Features.Get<IHttpResponseBodyFeature>();
-        var body = new StreamResponseBodyFeature(tempFileStream, originalBody);
+        var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
+        var body = new PacmanPackageBody(originalBody, tempFileName);
         context.Features.Set<IHttpResponseBodyFeature>(body);
-                    
+        context.Response.ContentType = "application/octet-stream";
+     
         await _next(context);
-        await tempFileStream.FlushAsync(ctx);
-        context.Features.Set(body.PriorFeature);
-
-        if (!context.Response.HasStarted)
-        {
-            context.Response.ContentType = "application/octet-stream";
-        }
 
         return new FileInfo(tempFileName);
     }

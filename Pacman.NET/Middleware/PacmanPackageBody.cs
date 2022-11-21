@@ -5,16 +5,14 @@ namespace Pacman.NET.Middleware;
 
 public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 {
-    private readonly HttpContext _context;
     private readonly string _filePath;
     private readonly IHttpResponseBodyFeature _innerBodyFeature;
     private bool _complete;
     private FileStream _fileStream;
     private PipeWriter? _pipeAdapter;
 
-    public PacmanPackageBody(HttpContext context, IHttpResponseBodyFeature innerBodyFeature, string filePath)
+    public PacmanPackageBody(IHttpResponseBodyFeature innerBodyFeature, string filePath)
     {
-        _context = context;
         _innerBodyFeature = innerBodyFeature;
         _filePath = filePath;
         _fileStream = new FileStream(_filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
@@ -45,7 +43,6 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
     {
         await _innerBodyFeature.Stream.FlushAsync();
         await _fileStream.FlushAsync();
-        await _fileStream.DisposeAsync();
     }
 
     public Stream Stream => _innerBodyFeature.Stream;
@@ -65,23 +62,31 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        throw new NotImplementedException();
+        _fileStream.Read(buffer, offset, count);
+        return Stream.Read(buffer, offset, count);
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        throw new NotImplementedException();
+        return Stream.Seek(offset, origin);
     }
 
     public override void SetLength(long value)
     {
         Stream.SetLength(value);
+        _fileStream.SetLength(value);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
     {
         Stream.Write(buffer, offset, count);
         _fileStream.Write(buffer, offset, count);
+    }
+
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        await _fileStream.WriteAsync(buffer, offset, count, cancellationToken);
+        await Stream.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
     public override bool CanRead => Stream.CanRead;

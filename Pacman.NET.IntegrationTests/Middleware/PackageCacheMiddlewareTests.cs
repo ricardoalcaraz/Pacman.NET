@@ -12,7 +12,7 @@ public class PackageCacheMiddlewareTests : WebAppFixture
     [Test]
     public async Task GetPackage_PackageDoesNotExist_ShouldProxyRequest()
     {
-        var stream = await Client.GetStreamAsync("/archlinux/core/os/x86_64/ca-certificates-20220905-1-any.pkg.tar.zst");
+        var stream = await Client.GetStreamAsync("/archlinux/core/os/x86_64/bzip2-1.0.8-4-x86_64.pkg.tar.zst");
         using var memoryStream = new MemoryStream();
         await stream.CopyToAsync(memoryStream);
         Assert.That(stream, Is.Not.Null);
