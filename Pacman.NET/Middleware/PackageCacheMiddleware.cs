@@ -109,6 +109,7 @@ public class PackageCacheMiddleware
                 return;
             }
 
+            ctx.Response.StatusCode = 404;
             try
             {
                 //var packageStream = await _pacmanService.GetPackageStream(path, ctx.RequestAborted);
