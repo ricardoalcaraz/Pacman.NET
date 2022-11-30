@@ -65,9 +65,9 @@ public class PackageCacheMiddleware
                 }
                 
                 //stream downloaded file to response body
-                if (!fileInfo.Exists || isDb)
+                if (!fileInfo.Exists || isDb || fileInfo.Length <= 1)
                 {
-                    _logger.LogWarning("No cache file found for {Name}, proxying request", fileInfo.Name);
+                    _logger.LogDebug("Proxying request for {Name}", fileInfo.Name);
                     await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
                     await DownloadPacmanPackage(ctx, fileStream);
                 }
