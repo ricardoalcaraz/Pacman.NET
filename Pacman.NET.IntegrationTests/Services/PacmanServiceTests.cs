@@ -16,8 +16,8 @@ public class PacmanServiceTests : WebAppFixture
     [Test]
     public async Task TestDependency_PacmanExists_ShouldSucceed()
     {
-        var elephant = await _pacmanService.TestDependencies(CancellationToken.None);
-        Console.WriteLine(elephant);
-        That(string.IsNullOrWhiteSpace(elephant), Is.False);
+        var isValid = await _pacmanService.TestDependencies(CancellationToken.None);
+        Console.WriteLine(isValid);
+        That(isValid, Is.True);
     }
 }
