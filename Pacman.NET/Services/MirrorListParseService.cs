@@ -31,12 +31,12 @@ public class MirrorListParseService : IMirrorService
             var mirrorUrl = new string(mirror.TakeWhile(c => c != '$').ToArray());
             if (await _mirrorClient.IsMirrorUpToDate(mirrorUrl, ctx))
             {
-                _logger.LogDebug("Using up to date mirror {Url}", mirror);
-                yield return mirrorUri;
+                _logger.LogDebug("Using up to date mirror {Url}", mirrorUrl);
+                yield return mirrorUrl;
             }
             else
             {
-                _logger.LogWarning("Ignoring {Url} because it is out of date", mirror);
+                _logger.LogWarning("Ignoring {Url} because it is out of date", mirrorUrl);
             }
         }
     }
