@@ -20,7 +20,7 @@ public class PacmanController : ControllerBase
     }
 
     [HttpPost("package")]
-    public async Task<ActionResult> AddPackage(IFormFile packageFile,[FromQuery] string packageName, [FromQuery]string architecture)
+    public async Task<ActionResult> AddPackage(IFormFile packageFile, [FromQuery] string packageName, [FromQuery] string architecture)
     {
         var fileName = packageFile.FileName;
         var filePath = Path.Combine(_env.ContentRootPath, fileName);

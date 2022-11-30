@@ -38,20 +38,22 @@ public class PacmanService : BackgroundService, IPacmanService
     {
         if (await TestDependencies(stoppingToken))
         {
-            var options = _options.Value;
-            foreach (var customRepo in options.CustomRepos)
-            {
-                var directoryInfo = Directory.CreateDirectory(Path.Combine(_env.ContentRootPath, customRepo.Name));
-                if (directoryInfo.Exists)
-                {
-                    _fileProviders.Add(customRepo.Name, new PhysicalFileProvider(directoryInfo.FullName));
-                    _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
-                }
-            }
+            
         }
         else
         {
             _logger.LogWarning("Unable to create custom repos because of failed dependency check");
+        }
+        
+        var options = _options.Value;
+        var customRepoDirInfo = Directory.CreateDirectory(options.CustomRepoDir);
+        ;
+        
+        foreach (var customRepo in customRepoDirInfo.GetDirectories())
+        {
+            var repoName = customRepo.Name;
+            _fileProviders.Add(repoName, new PhysicalFileProvider(customRepo.FullName));
+            _logger.LogInformation("Found custom repo {Name}", repoName);
         }
     }
 
@@ -181,15 +183,14 @@ public class PacmanService : BackgroundService, IPacmanService
     }
     public bool TryGetFile(string repo, string fileName, out Stream fileStream)
     {
-        fileStream = Stream.Null;
-
         if (_fileProviders.TryGetValue(repo, out var fileProvider))
         {
             var file = fileProvider.GetFileInfo(fileName);
-            fileStream = file.CreateReadStream();
+            fileStream = file.Exists ? file.CreateReadStream() : Stream.Null;
             return file.Exists;
         }
-
+        
+        fileStream = Stream.Null;
         return false;
     }
 }

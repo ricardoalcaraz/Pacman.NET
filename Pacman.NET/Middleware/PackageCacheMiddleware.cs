@@ -49,6 +49,7 @@ public class PackageCacheMiddleware
         if (path.StartsWithSegments(options.BaseAddress, out var relativePath))
         {
             var endpoint = ctx.GetEndpoint();
+            //TODO: avoid doing work if custom repo is called
             if (endpoint is not null)
             {
                 var uri = new Uri(relativePath);
@@ -56,6 +57,7 @@ public class PackageCacheMiddleware
                 var fileInfo = _fileProvider.GetFileInfo(fileName);
                 var isDb = fileName.EndsWith(".db");
                 var isSig = fileName.EndsWith(".sig");
+                
                 if (isSig)
                 {
                     await _next(ctx);

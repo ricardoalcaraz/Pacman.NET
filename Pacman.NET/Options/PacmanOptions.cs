@@ -16,6 +16,7 @@ public record ApplicationOptions
     public required bool CacheDb { get; set; }
     public required bool CachePackages { get; init; }
     public required bool VerifySignature { get; init; }
+    public required string CustomRepoDir { get; set; }
     public required string LogDirectory { get; init; }
     public required string MirrorUrl { get; init; }
     public required int CacheRefreshInterval { get; init; }

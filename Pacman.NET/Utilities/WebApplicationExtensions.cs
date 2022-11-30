@@ -34,6 +34,7 @@ public static class WebApplicationExtensions
             .Configure(opt =>
             {
                 var cacheUri = new Uri(opt.CacheDirectory, UriKind.RelativeOrAbsolute);
+                
                 if (!cacheUri.IsAbsoluteUri)
                 {
                     opt.CacheDirectory = Path.Combine(builder.Environment.ContentRootPath, opt.CacheDirectory);
@@ -47,6 +48,17 @@ public static class WebApplicationExtensions
         builder.Services.AddMemoryCache();
         builder.Services.AddOptions<ApplicationOptions>()
             .BindConfiguration("Pacman")
+            .Configure(opt =>
+            {
+                var cacheUri = new Uri(opt.CustomRepoDir, UriKind.RelativeOrAbsolute);
+                
+                if (!cacheUri.IsAbsoluteUri)
+                {
+                    opt.CustomRepoDir = Path.Combine(builder.Environment.ContentRootPath, opt.CustomRepoDir);
+                }
+
+                Directory.CreateDirectory(opt.CustomRepoDir);
+            })
             .ValidateDataAnnotations()
             .ValidateOnStart();
         
