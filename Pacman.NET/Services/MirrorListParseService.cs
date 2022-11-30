@@ -24,14 +24,14 @@ public class MirrorListParseService : IMirrorService
     public async IAsyncEnumerable<string> MirrorUrlStream([EnumeratorCancellation] CancellationToken ctx)
     {
         var mirrorUri = _options.Value.MirrorUrl;
-        _logger.LogDebug("Parsing mirrors in {Dir}", mirrorUri);
+        _logger.LogInformation("Retrieving mirrors from file at {Dir}", mirrorUri);
 
         await foreach (var mirror in _configParser.ParseMirrorlist(mirrorUri, ctx))
         {
             var mirrorUrl = new string(mirror.TakeWhile(c => c != '$').ToArray());
             if (await _mirrorClient.IsMirrorUpToDate(mirrorUrl, ctx))
             {
-                _logger.LogInformation("Using up to date mirror {Url}", mirror);
+                _logger.LogDebug("Using up to date mirror {Url}", mirror);
                 yield return mirror;
             }
             else

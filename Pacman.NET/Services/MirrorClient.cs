@@ -17,14 +17,14 @@ public class MirrorClient
     public async Task<bool> IsMirrorUpToDate(string mirrorUrl, CancellationToken ctx)
     {
         var cutoffDate = DateTimeOffset.UtcNow - TimeSpan.FromHours(6);
-        _logger.LogInformation("Checking if {Url} is up date date as of {Date}", mirrorUrl, cutoffDate);
+        _logger.LogDebug("Checking if {Url} is up date date as of {Date}", mirrorUrl, cutoffDate);
         var cutoffUnixTime = cutoffDate.ToUnixTimeSeconds();
         try
         {
             var lastSyncResponse = (await _client.GetStringAsync($"{mirrorUrl}lastsync", ctx)).Trim();
             _logger.LogDebug("Received {Response} from {Url}", lastSyncResponse, mirrorUrl);
             var isValidUnixTime = long.TryParse(lastSyncResponse, out var lastSyncTime) && lastSyncTime > cutoffUnixTime;
-            _logger.LogInformation("Is {Url} up to date: {Result}", mirrorUrl, isValidUnixTime);
+            _logger.LogDebug("Is {Url} up to date: {Result}", mirrorUrl, isValidUnixTime);
             return isValidUnixTime;
         }
         catch (HttpRequestException ex)
