@@ -5,11 +5,8 @@ namespace Pacman.NET.Middleware;
 
 public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 {
-    private readonly string _filePath;
     private readonly IHttpResponseBodyFeature _innerBodyFeature;
-    private bool _complete;
-    private FileStream _fileStream;
-    private PipeWriter? _pipeAdapter;
+    private readonly FileStream _fileStream;
 
     public PacmanPackageBody(IHttpResponseBodyFeature innerBodyFeature, FileStream fileStream)
     {
@@ -61,7 +58,7 @@ public class PacmanPackageBody : Stream, IHttpResponseBodyFeature
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        _fileStream.Read(buffer, offset, count);
+        _ = _fileStream.Read(buffer, offset, count);
         return _innerBodyFeature.Stream.Read(buffer, offset, count);
     }
 

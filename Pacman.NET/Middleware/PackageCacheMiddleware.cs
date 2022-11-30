@@ -92,14 +92,14 @@ public class PackageCacheMiddleware
                 //var packageStream = await _pacmanService.GetPackageStream(path, ctx.RequestAborted);
                 return;
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
                 ctx.Response.StatusCode = 404;
             }
-            catch (IOException ex)
+            catch (IOException)
             {
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 ctx.Response.StatusCode = 500;
             }
@@ -136,8 +136,6 @@ public class PackageCacheMiddleware
         await SetHeaders(context);
 
         var bufferSize = 1024 * 16;
-        var totalBytesProcessed = 0;
-        var numBytesProcessed = 0;
         var bytesRead = 0;
         do
         {
@@ -146,7 +144,6 @@ public class PackageCacheMiddleware
             
             bytesRead = await packageStream.ReadAsync(buffer, context.RequestAborted);
             var dataReceived = buffer.AsMemory(0, bytesRead);
-            numBytesProcessed += bytesRead;
 
             await fileStream.WriteAsync(dataReceived, context.RequestAborted);
             await context.Response.BodyWriter.WriteAsync(dataReceived, context.RequestAborted);

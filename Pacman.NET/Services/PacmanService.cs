@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
@@ -139,7 +140,7 @@ public class PacmanService : BackgroundService, IPacmanService
         };
     }
 
-    private async IAsyncEnumerable<string> ReadOutputStream(StreamReader outputStream, CancellationToken ctx)
+    private async IAsyncEnumerable<string> ReadOutputStream(StreamReader outputStream, [EnumeratorCancellation] CancellationToken ctx)
     {
         while (!outputStream.EndOfStream)
         {

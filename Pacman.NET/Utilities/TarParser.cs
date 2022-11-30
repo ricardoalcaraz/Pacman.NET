@@ -56,8 +56,9 @@ public class TarParser
     /// <summary>
     ///     Read the entirety of a file based on the information contained in the <paramref name="header" />
     /// </summary>
-    public async Task ReadFile(TarFileInfo header)
+    public Task ReadFile(TarFileInfo header)
     {
+        return Task.CompletedTask;
     }
 
 
@@ -87,7 +88,6 @@ public class TarParser
 //await gzipStream.CopyToAsync(tmpDb);
 //await tmpDb.DisposeAsync();
         var streamReader = new StreamReader(gzipStream, Encoding.UTF8, true);
-        var lineCounter = 0;
         var packageList = new List<string>();
 
         while (!streamReader.EndOfStream)
@@ -166,8 +166,9 @@ public class TarParser
     }
 
 
-    public async Task ReadCompressedTar(string path)
+    public Task ReadCompressedTar(string path)
     {
+        return Task.CompletedTask;
     }
 
 

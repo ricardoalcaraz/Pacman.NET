@@ -34,14 +34,14 @@ public record CustomRepo
 
 public record DatabaseOptions
 {
-    public string Name { get; set; }
-    public string Path { get; set; }
+    public required string Name { get; set; }
+    public required string Path { get; set; }
 }
 
 
 public record PackageCacheOptions
 {
-    public string BasePath { get; set; }
-    public IFileProvider FileProvider { get; set; }
-    public string SavePath { get; set; }
+    public required string BasePath { get; set; }
+    public required IFileProvider FileProvider { get; set; }
+    public required string SavePath { get; set; }
 }
