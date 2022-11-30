@@ -17,7 +17,7 @@ public class MirrorClient
     public async Task<bool> IsMirrorUpToDate(string mirrorUrl, CancellationToken ctx)
     {
         var cutoffDate = DateTimeOffset.UtcNow - TimeSpan.FromHours(6);
-        _logger.LogDebug("Checking if {Url} is up date date as of {Date}", mirrorUrl, cutoffDate);
+        _logger.LogDebug("Checking if {Url} is up to date as of {Date}", mirrorUrl, cutoffDate);
         var cutoffUnixTime = cutoffDate.ToUnixTimeSeconds();
         try
         {

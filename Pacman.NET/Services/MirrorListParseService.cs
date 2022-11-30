@@ -32,7 +32,7 @@ public class MirrorListParseService : IMirrorService
             if (await _mirrorClient.IsMirrorUpToDate(mirrorUrl, ctx))
             {
                 _logger.LogDebug("Using up to date mirror {Url}", mirror);
-                yield return mirror;
+                yield return mirrorUri;
             }
             else
             {
