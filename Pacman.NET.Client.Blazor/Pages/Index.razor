@@ -1,0 +1,58 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Http
+@inject HttpClient Client;
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+<div class="alert alert-warning" role="alert">
+    Before authentication will function correctly, you must configure your provider details in <code>Program.cs</code>
+</div>
+
+<EditForm OnValidSubmit="SubmitForm" Model="_packageRequest">
+    <div>
+        <label>
+            PackageName: <InputText @bind="_packageRequest.Name" ValueExpression="p => p.Name"></InputText>
+        </label>
+    </div>
+    <div>
+        <label>
+            Package: <InputFile name="package" @bind="_packageFile"></InputFile>
+        </label>
+    </div>
+</EditForm>
+
+@if (string.IsNullOrWhiteSpace(Output))
+{
+    <p>There is nothing to show...</p>
+}
+else
+{
+    <div>
+    
+        <h2>Output</h2>
+
+        <p>@Output</p>
+    </div>
+}
+
+
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?"/>
+
+@code{
+    private IFormFile? _packageFile;
+    private PackageRequest _packageRequest = new();
+    private string Output = string.Empty;
+    public async Task SubmitForm()
+    {
+        var formContent = new MultipartFormDataContent();
+        formContent.Add(new StreamContent(_packageFile.OpenReadStream()));
+        formContent.Add(JsonContent.Create(_packageRequest));
+        var response = await Client.PostAsync("/pacman/package", formContent);
+        Output = await response.Content.ReadAsStringAsync();
+    }
+
+}

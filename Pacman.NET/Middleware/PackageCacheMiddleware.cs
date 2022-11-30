@@ -1,6 +1,4 @@
 using System.Buffers;
-using System.IO.Pipelines;
-using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,7 +10,7 @@ namespace Pacman.NET.Middleware;
 public class PackageCacheMiddleware
 {
     private readonly IOptions<PacmanOptions> _cacheOptions;
-    private readonly string[] _excludedFileTypes = { "db", "db.sig", "files" };
+    private readonly string[] _excludedFileTypes;
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly RequestDelegate _next;
     private readonly IPacmanService _pacmanService;
@@ -33,6 +31,7 @@ public class PackageCacheMiddleware
         _pacmanService = pacmanService;
         _memoryCache = memoryCache;
         _fileProvider = new PhysicalFileProvider(cacheOptions.Value.CacheDirectory);
+        _excludedFileTypes = new []{ "db", "db.sig", "files"};
     }
 
 
@@ -44,6 +43,7 @@ public class PackageCacheMiddleware
     public async Task Invoke(HttpContext ctx)
     {
         var options = _cacheOptions.Value;
+        
         var path = ctx.Request.Path;
 
         if (path.StartsWithSegments(options.BaseAddress, out var relativePath))
@@ -74,11 +74,8 @@ public class PackageCacheMiddleware
                     ctx.Response.ContentType = "application/octet-stream";
                     ctx.Response.ContentLength = fileInfo.Length;
                     await ctx.Response.StartAsync();
-
                     await ctx.Response.SendFileAsync(fileInfo);
-
                 }
-
                 if (isDb)
                 {
                     return;

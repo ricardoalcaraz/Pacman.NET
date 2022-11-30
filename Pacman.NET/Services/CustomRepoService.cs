@@ -1,37 +1,35 @@
-using System.Diagnostics;
+using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
 
 public class CustomRepoService : BackgroundService
 {
-    private readonly IOptions<PacmanOptions> _options;
+    private readonly IOptions<ApplicationOptions> _options;
     private readonly ILogger<CustomRepoService> _logger;
+    private readonly IWebHostEnvironment _env;
+    private readonly Dictionary<string, PhysicalFileProvider> _fileProviders = new();
 
     private const UnixFileMode USER_ONLY = UnixFileMode.UserExecute | UnixFileMode.UserExecute | UnixFileMode.UserExecute;
     
-    public CustomRepoService(IOptions<PacmanOptions> options, ILogger<CustomRepoService> logger)
+    public CustomRepoService(IOptions<ApplicationOptions> options, ILogger<CustomRepoService> logger, IWebHostEnvironment env)
     {
         _options = options;
         _logger = logger;
+        _env = env;
     }
     
     
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var options = _options.Value;
-        if (string.IsNullOrWhiteSpace(options.DbDirectory))
+        foreach (var customRepo in options.CustomRepos)
         {
-            _logger.LogInformation("No custom repos will be created");
-        }
-
-        var dbDir = new DirectoryInfo(options.DbDirectory);
-        if (dbDir.Exists)
-        {
-            _logger.LogInformation("Found Db directory at {Dir}", dbDir.FullName);
-        }
-        else
-        {
-            dbDir.Create();
+            var directoryInfo = Directory.CreateDirectory(Path.Combine(_env.ContentRootPath, customRepo.Name));
+            if (directoryInfo.Exists)
+            {
+                _fileProviders.Add(customRepo.Name, new PhysicalFileProvider(directoryInfo.FullName));
+                _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
+            }
         }
 
         return Task.CompletedTask;
@@ -72,5 +70,13 @@ public class CustomRepoService : BackgroundService
         //         }
         //     }
         // }
+    }
+
+    public bool TryGetFile(string repo, string fileName, out Stream fileStream)
+    {
+        var fileProvider = _fileProviders[repo];
+        var file = fileProvider.GetFileInfo(fileName);
+        fileStream = file.Exists ? file.CreateReadStream() : Stream.Null;
+        return file.Exists;
     }
 }

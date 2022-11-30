@@ -3,14 +3,16 @@ using Pacman.NET.Utilities;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddPacmanServer();
-//builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
-
 
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR().AddMessagePackProtocol();
+
+builder.Services
+    .AddSignalR()
+    .AddMessagePackProtocol();
 
 
 var app = builder.Build();

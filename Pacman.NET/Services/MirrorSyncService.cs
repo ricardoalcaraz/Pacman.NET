@@ -1,22 +1,23 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Yarp.ReverseProxy.LoadBalancing;
 
 namespace Pacman.NET.Services;
 
 public class MirrorSyncService : BackgroundService, IProxyConfigProvider
 {
-    private readonly IHttpClientFactory _clientFactory;
     private readonly ILogger<MirrorSyncService> _logger;
+    private readonly IMirrorService _mirrorService;
     private readonly InMemoryConfigProvider _inMemoryConfigProvider;
     private readonly List<RouteConfig> _routes;
     private readonly List<ClusterConfig> _cluster = new();
 
-    public MirrorSyncService(IHttpClientFactory clientFactory, ILogger<MirrorSyncService> logger, InMemoryConfigProvider inMemoryConfigProvider, IConfiguration config)
+    public MirrorSyncService(ILogger<MirrorSyncService> logger, 
+        IProxyConfigProvider proxyConfigProvider, 
+        IConfiguration config,
+        IMirrorService mirrorService)
     {
-        _clientFactory = clientFactory;
         _logger = logger;
-        _inMemoryConfigProvider = inMemoryConfigProvider;
+        _mirrorService = mirrorService;
+        _inMemoryConfigProvider = proxyConfigProvider as InMemoryConfigProvider ?? throw new InvalidOperationException(); 
         var basePath = config["BaseAddress"] ?? "/archlinux";
         _routes = new List<RouteConfig>
         {
@@ -43,48 +44,18 @@ public class MirrorSyncService : BackgroundService, IProxyConfigProvider
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var mirrorUri = new Uri("https://archlinux.org/mirrors/status/json/");
-        using var httpClient = _clientFactory.CreateClient();
-        var jsonDoc = await httpClient.GetFromJsonAsync<JsonDocument>(mirrorUri, new JsonSerializerOptions
+        var mirrorDestinations = new Dictionary<string, DestinationConfig>();
+
+        await foreach (var mirror in _mirrorService.MirrorUrlStream(stoppingToken))
         {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            NumberHandling = JsonNumberHandling.AllowReadingFromString,
-            UnknownTypeHandling = JsonUnknownTypeHandling.JsonElement
-        }, stoppingToken);
-
-
-        var lastCheck = jsonDoc.RootElement.GetProperty("last_check").GetString();
-
-        var mirrorList = new List<MirrorInfo>();
-        var mirrors = jsonDoc.RootElement.GetProperty("urls").EnumerateArray();
-        foreach (var mirror in mirrors)
-        {
-            var scoreProperty = mirror.GetProperty("score").GetRawText();
-            double.TryParse(scoreProperty, out var score);
-            var isActive = mirror.GetProperty("active").GetBoolean();
-
-            var isHttps = mirror.GetProperty("protocol").GetString() == "https";
-
-            if (isActive && isHttps && score > 0)
+            _logger.LogDebug("Received mirror {Url}", mirror);
+            mirrorDestinations.Add(mirror, new DestinationConfig
             {
-                var mirrorInfo = new MirrorInfo
-                {
-                    Url = mirror.GetProperty("url").GetString() ?? string.Empty,
-                    CountryCode = mirror.GetProperty("country_code").GetString() ?? string.Empty,
-                    Score = score
-                };
-                mirrorList.Add(mirrorInfo);
-            }
+                Address = mirror
+            });
+            if (mirrorDestinations.Count > 6)
+                break;
         }
-
-        var sortedMirrors = mirrorList
-            .Where(m => m.CountryCode == "US")
-            .Where(m => !string.IsNullOrWhiteSpace(m.Url))
-            .OrderBy(m => m.Score)
-            .Take(10)
-            .Select(m => new Uri(m.Url))
-            .ToDictionary(m => m.Host, m => new DestinationConfig { Address = m.ToString() });
-
 
         _cluster.AddRange(new[]
         {
@@ -92,18 +63,11 @@ public class MirrorSyncService : BackgroundService, IProxyConfigProvider
             {
                 ClusterId = "mirrorCluster",
                 LoadBalancingPolicy = LoadBalancingPolicies.RoundRobin,
-                Destinations = sortedMirrors
+                Destinations = mirrorDestinations
             }
         });
         _inMemoryConfigProvider.Update(_routes, _cluster);
     }
 
     public IProxyConfig GetConfig() => _inMemoryConfigProvider.GetConfig();
-}
-
-public record MirrorInfo
-{
-    public required string Url { get; init; }
-    public required string CountryCode { get; init; }
-    public required double? Score { get; init; }
 }

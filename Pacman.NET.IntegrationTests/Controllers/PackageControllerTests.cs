@@ -1,5 +1,4 @@
 using System.Net;
-using Pacman.NET.IntegrationTests.Utilities;
 
 namespace Pacman.NET.IntegrationTests;
 

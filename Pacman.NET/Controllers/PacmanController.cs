@@ -9,21 +9,18 @@ public class PacmanController : ControllerBase
     private readonly ILogger<PacmanController> _logger;
     private readonly IWebHostEnvironment _env;
     private readonly IPacmanService _pacmanService;
-    private readonly PacmanOptions _pacmanOptions;
     
     public PacmanController(IPacmanService pacmanService, 
-        IOptions<PacmanOptions> options, 
         ILogger<PacmanController> logger,
         IWebHostEnvironment env)
     {
-        _pacmanOptions = options.Value;
         _logger = logger;
         _env = env;
         _pacmanService = pacmanService;
     }
 
     [HttpPost("package")]
-    public async Task<ActionResult> AddPackage(IFormFile packageFile)
+    public async Task<ActionResult> AddPackage(IFormFile packageFile,[FromQuery] string packageName, [FromQuery]string architecture)
     {
         var fileName = packageFile.FileName;
         var filePath = Path.Combine(_env.ContentRootPath, fileName);
@@ -45,4 +42,23 @@ public class PacmanController : ControllerBase
             Output = await output.Output.ReadToEndAsync()
         });
     }
+
+    [HttpGet("/archlinux/{repo}/{file}")]
+    public ActionResult ServeFile(string repo, string file)
+    {
+        if (_pacmanService.TryGetFile(repo, file, out var fileStream))
+        {
+            _logger.LogDebug("Found {File} in {Repo}", repo, file);
+            return File(fileStream, "application/octet-stream");
+        }
+
+        return NotFound();
+    }
+}
+
+public record PackageRequest
+{
+    public IFormFile Package { get; set; }
+    public string PackageName { get; set; }
+    public string Architecture { get; set; }
 }

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
@@ -9,29 +8,54 @@ public interface IPacmanService : IDisposable
 {
     AddRepoResponse AddPackage(Stream packageStream, CancellationToken ctx = default);
     Task<Stream> GetPackageStream(string path, CancellationToken ctx);
-    Task<string> TestDependencies(CancellationToken ctx);
+    Task<bool> TestDependencies(CancellationToken ctx);
+    bool TryGetFile(string repo, string fileName, out Stream fileStream);
 }
 
-public class PacmanService : IPacmanService
+public class PacmanService : BackgroundService, IPacmanService
 {
     private const string REPO_ADD_BIN = "/usr/bin/repo-add";
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IOptions<ApplicationOptions> _options;
     private readonly ILogger<PacmanService> _logger;
-    private readonly PacmanOptions _pacmanOptions;
     private readonly Process _repoAddProcess = new();
     private readonly ConcurrentDictionary<string, FileInfo> packageLock = new();
     private volatile bool _isDownloading;
+    private readonly IWebHostEnvironment _env;
+    private readonly Dictionary<string, PhysicalFileProvider> _fileProviders = new();
 
 
-    public PacmanService(IOptions<PacmanOptions> options, ILogger<PacmanService> logger, IHttpClientFactory httpClientFactory)
+    public PacmanService(IOptions<ApplicationOptions> options, ILogger<PacmanService> logger, IHttpClientFactory httpClientFactory, IWebHostEnvironment env)
     {
+        _options = options;
         _logger = logger;
         _httpClientFactory = httpClientFactory;
-        _pacmanOptions = options.Value;
+        _env = env;
     }
 
 
-    public async Task<string> TestDependencies(CancellationToken ctx = default)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (await TestDependencies(stoppingToken))
+        {
+            var options = _options.Value;
+            foreach (var customRepo in options.CustomRepos)
+            {
+                var directoryInfo = Directory.CreateDirectory(Path.Combine(_env.ContentRootPath, customRepo.Name));
+                if (directoryInfo.Exists)
+                {
+                    _fileProviders.Add(customRepo.Name, new PhysicalFileProvider(directoryInfo.FullName));
+                    _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
+                }
+            }
+        }
+        else
+        {
+            _logger.LogWarning("Unable to create custom repos because of failed dependency check");
+        }
+    }
+
+    public async Task<bool> TestDependencies(CancellationToken ctx = default)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -45,16 +69,16 @@ public class PacmanService : IPacmanService
             {
                 await _repoAddProcess.WaitForExitAsync(ctx);
                 var elephant = await _repoAddProcess.StandardOutput.ReadToEndAsync(ctx);
-                return elephant;
+                _logger.LogDebug("Pacman is found:\n{Elephant}", elephant);
+                return !string.IsNullOrWhiteSpace(elephant);
             }
-
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unable to verify existence of pacman");
         }
         
-        return string.Empty;
+        return false;
     }
     
     
@@ -154,6 +178,19 @@ public class PacmanService : IPacmanService
     public void Dispose()
     {
         _repoAddProcess.Dispose();
+    }
+    public bool TryGetFile(string repo, string fileName, out Stream fileStream)
+    {
+        fileStream = Stream.Null;
+
+        if (_fileProviders.TryGetValue(repo, out var fileProvider))
+        {
+            var file = fileProvider.GetFileInfo(fileName);
+            fileStream = file.CreateReadStream();
+            return file.Exists;
+        }
+
+        return false;
     }
 }
 

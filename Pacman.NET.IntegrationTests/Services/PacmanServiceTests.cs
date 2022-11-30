@@ -1,31 +1,23 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Pacman.NET.Services;
+using static NUnit.Framework.Assert;
 
 namespace Pacman.NET.IntegrationTests.Services;
 
 
 public class PacmanServiceTests : WebAppFixture
 {
-    private PacmanService _pacmanService;
+    private IPacmanService _pacmanService = null!;
 
     [SetUp]
     public void Init()
     {
-        _pacmanService = WebAppFactory.Services.GetRequiredService<PacmanService>();
+        _pacmanService = WebAppFactory.Services.GetRequiredService<IPacmanService>();
     }
     
     [Test]
     public async Task TestDependency_PacmanExists_ShouldSucceed()
     {
-        var elephant = await _pacmanService.TestDependencies();
+        var elephant = await _pacmanService.TestDependencies(CancellationToken.None);
         Console.WriteLine(elephant);
-        Assert.IsFalse(string.IsNullOrWhiteSpace(elephant));
-    }
-
-    [Test]
-    public async Task AddPackage_ValidPackage_ShouldSucceed()
-    {
-        
+        That(string.IsNullOrWhiteSpace(elephant), Is.False);
     }
 }

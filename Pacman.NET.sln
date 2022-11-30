@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.UnitTests", "Pac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.BlazorServer", "Pacman.NET.BlazorServer\Pacman.NET.BlazorServer.csproj", "{F071D0B0-DA22-4D48-8E23-64C487AE3B69}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Client.Blazor", "Pacman.NET.Client.Blazor\Pacman.NET.Client.Blazor.csproj", "{36B7DEE5-708F-446B-84B3-B912A7CF48D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{F071D0B0-DA22-4D48-8E23-64C487AE3B69}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F071D0B0-DA22-4D48-8E23-64C487AE3B69}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F071D0B0-DA22-4D48-8E23-64C487AE3B69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,26 +1,22 @@
-namespace Pacman.NET.Services;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging.Abstractions;
 
+namespace Pacman.NET.Services;
 
 public record PacmanConfigSection(string Name, List<string> Settings);
 public class PacmanConfigParser
 {
     private readonly ILogger<PacmanConfigParser> _logger;
-    private readonly IOptions<PacmanOptions> _options;
 
-    public PacmanConfigParser(ILogger<PacmanConfigParser> logger, IOptions<PacmanOptions> options)
+    public PacmanConfigParser(ILogger<PacmanConfigParser>? logger)
     {
-        _logger = logger;
-        _options = options;
+        _logger = logger ?? NullLogger<PacmanConfigParser>.Instance;
     }
     
     
-    public async Task<Dictionary<string, string>> ParseConfig()
+    public async Task<Dictionary<string, string>> ParseConfig(string filePath)
     {
-        var configFileLocation = "/etc/pacman.conf";
-        var configStream = File.OpenText(configFileLocation);
-        var pacmanConfigSetting = _options.Value;
-        _logger.LogInformation("Found setting for {Section} of {Setting}", "", pacmanConfigSetting);
-        var currentState = "ParseOption";
+        var configStream = File.OpenText(filePath);
         var allSettings = new Dictionary<string, Dictionary<string, string>>();
 
         while (!configStream.EndOfStream)
@@ -28,7 +24,6 @@ public class PacmanConfigParser
             var configLine = await configStream.ReadLineAsync();
             configLine = configLine?.Trim() ?? string.Empty;
             var sectionName = string.Empty;
-            var configSetting = string.Empty;
             
             if (configLine is ['#', ..])
             {
@@ -61,7 +56,6 @@ public class PacmanConfigParser
                     Options = FileOptions.None,
                     PreallocationSize = 0,
                     Share = FileShare.None,
-                    UnixCreateMode = null
                 });
 
                       var configSettingName = keyValueEntry.Key;
@@ -117,6 +111,32 @@ public class PacmanConfigParser
         return new Dictionary<string, string>();
     }
 
+    public async IAsyncEnumerable<string> ParseMirrorlist(string filePath, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var streamReader = File.OpenText(filePath);
+        while (!streamReader.EndOfStream)
+        {
+            var configLine = await streamReader.ReadLineAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(configLine) || configLine.StartsWith("#"))
+            {
+                _logger.LogDebug("Ignored empty line");
+            }
+            else
+            {
+                var configVal = configLine.Split("=", StringSplitOptions.TrimEntries);
+                if (configVal is ["Server", var url])
+                {
+                    _logger.LogDebug("Parsed url {Url}", url);
+                    yield return url;
+                }
+                else
+                {
+                    _logger.LogWarning("Ignoring invalid line {Content}", configLine);
+                }
+            }
+        }
+    }
+    
     public string GetSectionName(string sectionName) => sectionName[1..^1];
 }
 
