@@ -7,25 +7,21 @@ using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Middleware;
 
-public class PackageCacheMiddleware
+public class PackageCacheMiddleware : IMiddleware
 {
     private readonly IOptions<PacmanOptions> _cacheOptions;
     private readonly string[] _excludedFileTypes;
     private readonly ILogger<PackageCacheMiddleware> _logger;
-    private readonly RequestDelegate _next;
     private readonly IPacmanService _pacmanService;
     private readonly IMemoryCache _memoryCache;
-    private readonly IOptions<SlidingWindowRateLimiterOptions> _rateLimiterOptions;
     private readonly PhysicalFileProvider _fileProvider;
 
 
-    public PackageCacheMiddleware(RequestDelegate next,
-                                  IOptions<PacmanOptions> cacheOptions,
+    public PackageCacheMiddleware(IOptions<PacmanOptions> cacheOptions,
                                   ILogger<PackageCacheMiddleware> logger,
                                   IPacmanService pacmanService, 
                                   IMemoryCache memoryCache)
     {
-        _next = next ?? throw new ArgumentNullException(nameof(next));
         _cacheOptions = cacheOptions;
         _logger = logger;
         _pacmanService = pacmanService;
@@ -40,9 +36,9 @@ public class PackageCacheMiddleware
     /// </summary>
     /// <param name="context">The <see cref="HttpContext" />.</param>
     /// <returns>A task that represents the execution of this middleware.</returns>
-    public async Task Invoke(HttpContext ctx)
+public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
     {
-        var options = _cacheOptions.Value;
+                var options = _cacheOptions.Value;
         
         var path = ctx.Request.Path;
 
@@ -55,12 +51,12 @@ public class PackageCacheMiddleware
                 var uri = new Uri(relativePath);
                 var fileName = uri.Segments.Last();
                 var fileInfo = _fileProvider.GetFileInfo(fileName);
+                var isExcludedFileType = _excludedFileTypes.Any(e => fileName.EndsWith(e));
                 var isDb = fileName.EndsWith(".db");
-                var isSig = fileName.EndsWith(".sig");
                 
-                if (isSig)
+                if (isExcludedFileType)
                 {
-                    await _next(ctx);
+                    await next(ctx);
                     return;
                 }
                 
@@ -106,10 +102,9 @@ public class PackageCacheMiddleware
         }
 
         _logger.LogTrace("Skipping pacman cache middleware");
-        await _next(ctx);
+        await next(ctx);
     }
-
-
+    
     private async Task SetHeaders(HttpContext ctx)
     {
         if (!ctx.Response.HasStarted)
@@ -123,8 +118,16 @@ public class PackageCacheMiddleware
     public async Task GetRateLimiterAsync(HttpContext context)
     {
         var enableRateLimitingAttribute = context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>();
-
-        var slidingWindow = new SlidingWindowRateLimiter(_rateLimiterOptions.Value);
+        var rateLimiterOptions = new SlidingWindowRateLimiterOptions
+        {
+            AutoReplenishment = true,
+            PermitLimit = 6,
+            QueueLimit = 6,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            SegmentsPerWindow = 5,
+            Window = TimeSpan.FromMinutes(1)
+        };
+        var slidingWindow = new SlidingWindowRateLimiter(rateLimiterOptions);
 
         //represents the total size of the file
         var permitCount = 25;
@@ -152,16 +155,13 @@ public class PackageCacheMiddleware
     }
 
 
-    public async Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
+    public Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
     {
         var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
         var body = new PacmanPackageBody(originalBody, cacheStream);
         context.Features.Set<IHttpResponseBodyFeature>(body);
         context.Response.ContentType = "application/octet-stream";
-     
-        await _next(context);
-        //context.Features.Set(originalBody);
+        
+        return Task.CompletedTask;
     }
-    
-    
 }
