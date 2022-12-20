@@ -7,6 +7,7 @@ public static class WebApplicationExtensions
 {
     public static WebApplicationBuilder AddPacmanServer(this WebApplicationBuilder builder)
     {
+        builder.Services.AddScoped<PackageCacheMiddleware>();
         builder.Services.AddSingleton<MirrorSyncService>();
         builder.Services.AddSingleton<PacmanService>();
         builder.Services.AddSingleton<IPacmanService, PacmanService>(sp => sp.GetRequiredService<PacmanService>());

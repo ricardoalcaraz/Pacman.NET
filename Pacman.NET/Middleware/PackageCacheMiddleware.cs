@@ -18,16 +18,16 @@ public class PackageCacheMiddleware : IMiddleware
 
 
     public PackageCacheMiddleware(IOptions<PacmanOptions> cacheOptions,
-                                  ILogger<PackageCacheMiddleware> logger,
-                                  IPacmanService pacmanService, 
-                                  IMemoryCache memoryCache)
+        ILogger<PackageCacheMiddleware> logger,
+        IPacmanService pacmanService,
+        IMemoryCache memoryCache)
     {
         _cacheOptions = cacheOptions;
         _logger = logger;
         _pacmanService = pacmanService;
         _memoryCache = memoryCache;
         _fileProvider = new PhysicalFileProvider(cacheOptions.Value.CacheDirectory);
-        _excludedFileTypes = new []{ "db", "db.sig", "files"};
+        _excludedFileTypes = new[] { "db", "db.sig", "files" };
     }
 
 
@@ -36,10 +36,10 @@ public class PackageCacheMiddleware : IMiddleware
     /// </summary>
     /// <param name="context">The <see cref="HttpContext" />.</param>
     /// <returns>A task that represents the execution of this middleware.</returns>
-public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
+    public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
     {
-                var options = _cacheOptions.Value;
-        
+        var options = _cacheOptions.Value;
+
         var path = ctx.Request.Path;
 
         if (path.StartsWithSegments(options.BaseAddress, out var relativePath))
@@ -50,35 +50,35 @@ public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
             {
                 var uri = new Uri(relativePath);
                 var fileName = uri.Segments.Last();
-                var fileInfo = _fileProvider.GetFileInfo(fileName);
-                var isExcludedFileType = _excludedFileTypes.Any(e => fileName.EndsWith(e));
-                var isDb = fileName.EndsWith(".db");
-                
-                if (isExcludedFileType)
+                var excludedFileType = _excludedFileTypes.SingleOrDefault(e => fileName.EndsWith(e));
+
+                if (excludedFileType is not null)
                 {
+                    _logger.LogDebug("Excluded file {Type} will be proxied", excludedFileType);
                     await next(ctx);
                     return;
                 }
                 
+                var fileInfo = _fileProvider.GetFileInfo(fileName);
+                
+                ctx.Response.Body = fileInfo switch
+                {
+                    {Exists: true} when excludedFileType is null => fileInfo.CreateReadStream(),
+                    {Exists: false} => await ProxyStream(excludedFileType!),
+                    _ => Stream.Null
+                };
+                
+                ctx.Response.ContentLength = 0;
+                ctx.Response.ContentType = "application/octet-stream";
+
                 //stream downloaded file to response body
-                if (!fileInfo.Exists || isDb || fileInfo.Length <= 1)
+                if (!fileInfo.Exists || fileInfo.Length <= 1)
                 {
                     _logger.LogDebug("Proxying request for {Name}", fileInfo.Name);
                     await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
                     await DownloadPacmanPackage(ctx, fileStream);
                 }
-                else if (fileInfo.Exists)
-                {
-                    ctx.Response.ContentType = "application/octet-stream";
-                    ctx.Response.ContentLength = fileInfo.Length;
-                    await ctx.Response.StartAsync();
-                    await ctx.Response.SendFileAsync(fileInfo);
-                }
-                if (isDb)
-                {
-                    return;
-                }
-                
+
                 return;
             }
 
@@ -104,7 +104,7 @@ public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
         _logger.LogTrace("Skipping pacman cache middleware");
         await next(ctx);
     }
-    
+
     private async Task SetHeaders(HttpContext ctx)
     {
         if (!ctx.Response.HasStarted)
@@ -114,6 +114,10 @@ public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
         }
     }
 
+    private Task<Stream> ProxyStream(string fileName)
+    {
+        return Task.FromResult(Stream.Null);
+    }
 
     public async Task GetRateLimiterAsync(HttpContext context)
     {
@@ -144,7 +148,7 @@ public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
         {
             using var lease = await slidingWindow.AcquireAsync(permitCount);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-            
+
             bytesRead = await packageStream.ReadAsync(buffer, context.RequestAborted);
             var dataReceived = buffer.AsMemory(0, bytesRead);
 
@@ -158,10 +162,10 @@ public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
     public Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
     {
         var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
-        var body = new PacmanPackageBody(originalBody, cacheStream);
-        context.Features.Set<IHttpResponseBodyFeature>(body);
-        context.Response.ContentType = "application/octet-stream";
-        
+        var logger = context.RequestServices.GetRequiredService<ILogger<PacmanPackageBody>>();
+        var httpResponseBodyFeature = new PacmanPackageBody(originalBody, cacheStream, logger);
+        context.Features.Set<IHttpResponseBodyFeature>(httpResponseBodyFeature);
+
         return Task.CompletedTask;
     }
 }
