@@ -16,16 +16,19 @@ public class PackageCacheMiddleware : IMiddleware
     private readonly PacmanOptions _cacheOptions;
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly IPacmanService _pacmanService;
+    private readonly PersistentFileService _persistentFileService;
     private readonly IFileProvider _fileProvider;
 
 
     public PackageCacheMiddleware(ILogger<PackageCacheMiddleware> logger,
         IOptions<PacmanOptions> cacheOptions, 
-        IPacmanService pacmanService)
+        IPacmanService pacmanService,
+        PersistentFileService persistentFileService)
     {
         _cacheOptions = cacheOptions.Value;
         _logger = logger;
         _pacmanService = pacmanService;
+        _persistentFileService = persistentFileService;
         _fileProvider = new PhysicalFileProvider(cacheOptions.Value.CacheDirectory);
     }
 
@@ -45,6 +48,8 @@ public class PackageCacheMiddleware : IMiddleware
             if (endpoint is not null)
             {
                 var uri = new Uri(relativePath);
+                
+                //create file for proxied request
                 var fileName = uri.Segments.Last();
                 var fileInfo = _fileProvider.GetFileInfo(fileName);
                 var isDb = fileName.EndsWith(".db");
@@ -149,7 +154,7 @@ public class PackageCacheMiddleware : IMiddleware
     public async Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
     {
         var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
-        var body = new PacmanPackageBody(originalBody, cacheStream);
+        var body = new PacmanPackageStream(originalBody, cacheStream);
         context.Features.Set<IHttpResponseBodyFeature>(body);
         context.Response.ContentType = "application/octet-stream";
      
@@ -174,28 +179,17 @@ public class PackageCacheMiddleware : IMiddleware
         //set file permissions as a precaution to ensure no executable files are being used as a cache
         fileInfo.UnixFileMode = FILE_PERM;
         var name = Path.GetTempFileName();
+        
         if (fileInfo.Exists)
         {
             try
             {
-                var tmpFileStreamOptions = new FileStreamOptions
-                {
-                    BufferSize = 4096,
-                    Access = FileAccess.Read,
-                    Mode = FileMode.Create,
-                    Options = FileOptions.DeleteOnClose,
-                    PreallocationSize = 4096,
-                    Share = FileShare.Read,
-                    UnixCreateMode = FILE_PERM
-                };
-            
-                var tmpFileStream = new FileStream(name, tmpFileStreamOptions);
-
-                //remove execute permissions on file 
-                fileInfo.UnixFileMode &= ~(UnixFileMode.UserExecute | UnixFileMode.OtherExecute | UnixFileMode.GroupExecute);
                 
+            
+
                 //after file is down downloading create background process to save tmp file to disk
                 
+                //reset stream to beginning
             }
             catch (IOException)
             {
@@ -206,19 +200,24 @@ public class PackageCacheMiddleware : IMiddleware
 
             }
         }
-        else
+        var tmpFileStreamOptions = new FileStreamOptions
         {
-            
-        }
-        
-        var tempFileName = name;
+            BufferSize = 4096,
+            Access = FileAccess.ReadWrite,
+            Mode = FileMode.Create,
+            Options = FileOptions.SequentialScan,
+            PreallocationSize = 4096,
+            Share = FileShare.None,
+            UnixCreateMode = FILE_PERM
+        };
+        var tmpFileStream = new FileStream(name, tmpFileStreamOptions);
+
         try
         {
-            var tmpFile = name;
-            await using var tmpFileStream = new FileStream(tmpFile, FileMode.Create, FileAccess.Read, FileShare.None);
-            var fileSte = new FileStream(tempFileName, FileMode.Create, FileAccess.Read, FileShare.Read);
-            await using var fileStream = File.OpenWrite(tempFileName);
-            
+            var fileSte = new FileStream(name, FileMode.Create, FileAccess.Read, FileShare.Read);
+            await using var fileStream = File.OpenWrite(name);
+            //move package body to ctor
+            context.Response.Body = new PacmanPackageStream(null, tmpFileStream);
             //wrap body stream in a rate limiter
             await next(context);
             
@@ -227,9 +226,44 @@ public class PackageCacheMiddleware : IMiddleware
         }
         catch (IOException ex)
         {
-            _logger.LogWarning("Permission denied to write {File} to {Path}", tempFileName, _cacheOptions.SaveDirectory);
+            _logger.LogWarning("Permission denied to write {File} to {Path}", name, _cacheOptions.SaveDirectory);
         }
 
         await next(context);
+ 
+        await context.Response.StartAsync();
+
+        var packageSize = context.Response.ContentLength ?? 0;
+        _logger.LogInformation("File Size of {Name} is {Size}", fileName, packageSize);
+
+        //TODO: catch exceptions when completing
+        await context.Response.CompleteAsync();
+        
+        tmpFileStream.Position = tmpFileStream.Seek(0, SeekOrigin.Begin);
+
+        if (tmpFileStream.Position == packageSize)
+        {
+            _logger.LogInformation("File {Name} has been downloaded", fileInfo.Name);
+            
+            
+            try
+            {
+                //move tmp file to cache directory
+                await _persistentFileService.EnqueueRequest(new PackageCacheRequest
+                {
+                    PackageStream = tmpFileStream,
+                    PackageName = fileInfo.Name
+                });
+                _logger.LogDebug("Successfully enqueued {Name} for cache persistence", fileInfo.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occured while trying to persist {Name}", fileName);
+                await tmpFileStream.DisposeAsync();
+            }
+        }
+
+        
+
     }
 }
