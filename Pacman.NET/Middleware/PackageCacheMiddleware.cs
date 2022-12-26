@@ -26,7 +26,11 @@ public class PackageCacheMiddleware : IMiddleware
         _logger = logger;
         _pacmanService = pacmanService;
         _persistentFileService = persistentFileService;
-        _fileProvider = new PhysicalFileProvider(cacheOptions.Value.CacheDirectory);
+        _fileProvider = new CompositeFileProvider(
+            new PhysicalFileProvider(_cacheOptions.CacheDirectory),
+            new PhysicalFileProvider(_cacheOptions.DbDirectory!),
+            new PhysicalFileProvider(_cacheOptions.SaveDirectory)
+        );;
     }
 
     //
@@ -162,16 +166,16 @@ public class PackageCacheMiddleware : IMiddleware
                 ctx.Response.ContentType = "application/octet-stream";
                 ctx.Response.ContentLength = cachedFileInfo.Length;
                 _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.SendFileAsync(fileName);
+                await ctx.Response.SendFileAsync(cachedFileInfo);
                 await ctx.Response.StartAsync();
+                return;
             }
         }
         else
         {
             _logger.LogDebug("Skipping pacman cache middleware at {Path}", path);
-            await next(ctx);
         }
-
+        await next(ctx);
         
         //if response still hasn't started then declare it as a 404
         // if (!ctx.Response.HasStarted)

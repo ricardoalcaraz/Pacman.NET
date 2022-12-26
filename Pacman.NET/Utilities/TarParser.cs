@@ -46,7 +46,8 @@ public class TarParser
         var restOfFile = Encoding.UTF8.GetString(headerBuffer[500..512]);
         if (typeFlag == "x")
         {
-            var metadata = Encoding.UTF8.GetString(headerBuffer[512..1024]);
+            _logger.LogDebug("Extended metadata detected for {Name}", fileName);
+            var metadata = Encoding.UTF8.GetString(headerBuffer[512..1024].TakeWhile(c => c != 0).ToArray()).Trim();
         }
 
         return new TarFileInfo(); //typeFlag == "x" ? 1024 : 512;
@@ -62,12 +63,11 @@ public class TarParser
     }
 
 
-    public async Task ParseTarFile()
+    public async Task ParseTarFile(Stream fileStream)
     {
         var stopWatch = new Stopwatch();
         stopWatch.Start();
-        var fileStream = "/home/ralcaraz/Desktop/extra.db";
-        var gzipStream = new GZipStream(new FileStream(fileStream, FileMode.Open), CompressionMode.Decompress);
+        var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
 // var db = Path.GetTempFileName();
 // var tmpDb = File.Create(db);
 
@@ -110,6 +110,7 @@ public class TarParser
             ReadHeader(bytes[start..]);
             var nextHeader4 = Encoding.UTF8.GetString(headerBuffer[^512..]);
             ArrayPool<byte>.Shared.Return(headerBuffer);
+            
             var stringBuilder2 = new StringBuilder();
 
 

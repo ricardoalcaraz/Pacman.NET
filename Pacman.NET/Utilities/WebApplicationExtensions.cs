@@ -66,11 +66,7 @@ public static class WebApplicationExtensions
     {
         var pacmanOptions = app.Services.GetRequiredService<IOptions<PacmanOptions>>().Value;
 
-        var compositeProvider = new CompositeFileProvider(
-            new PhysicalFileProvider(pacmanOptions.CacheDirectory),
-            new PhysicalFileProvider(pacmanOptions.DbDirectory!),
-            new PhysicalFileProvider(pacmanOptions.SaveDirectory)
-        );
+        
         
         // app.UseFileServer(new FileServerOptions
         // {
@@ -105,6 +101,7 @@ public static class WebApplicationExtensions
             try
             {
                 await next(ctx);
+            
             }
             finally
             {
@@ -123,11 +120,23 @@ public static class WebApplicationExtensions
             var lengthBefore = ctx.Response.ContentLength;
             logger.LogInformation("Started: {State}, Size: {Size2}", ctx.Response.HasStarted, lengthBefore);
 
-            if (ctx.Response.HasStarted)
+            if (ctx.Response is { HasStarted: true, StatusCode: 200 })
             { 
                 logger.LogInformation("Response has started for {Name}", ctx.Request.Path);
+                var fileService = ctx.RequestServices.GetRequiredService<PersistentFileService>();
+                var cachedFile = pacmanCacheBody.GetTempFile();
+                
+                logger.LogInformation("Sending {File} to get saved", cachedFile.Name);
+                await fileService.EnqueueRequest(new PackageCacheRequest
+                {
+                    PackageName = Path.GetFileName(ctx.Request.Path),
+                    PackageStream = cachedFile
+                });
                 return;
             }
+
+            await ctx.Response.StartAsync();
+            
             if (errorFeature is not null && !ctx.Response.HasStarted)
             {
                 ctx.Response.Clear();

@@ -28,39 +28,48 @@ public class PersistentFileService : BackgroundService
             await foreach (var persistPackageRequest in _channel.Reader.ReadAllAsync(stoppingToken))
             {
                 _logger.LogInformation("Processing {FileName}", persistPackageRequest);
-                
-                if (persistPackageRequest.PackageStream.CanSeek)
-                {
-                    persistPackageRequest.PackageStream.Seek(0, SeekOrigin.Begin);
-                }
-                var filePath = Path.Combine(_pacmanOptions.Value.SaveDirectory, persistPackageRequest.PackageName);
 
-                try
+                await using (persistPackageRequest.PackageStream)
                 {
-                    await using var fileStream = new FileStream(filePath, new FileStreamOptions
+                    if (persistPackageRequest.PackageStream.CanSeek)
                     {
-                        Access = FileAccess.Read,
-                        BufferSize = 4096,
-                        Mode = FileMode.Create,
-                        Options = FileOptions.WriteThrough,
-                        PreallocationSize = 4096,
-                        Share = FileShare.None,
-                        UnixCreateMode = FILE_PERM
-                    });
-                    await persistPackageRequest.PackageStream.CopyToAsync(fileStream, stoppingToken);
-                }
-                //persist file
-                catch(Exception)
-                {
-                    var fileInfo = new FileInfo(filePath);
-                    if (fileInfo.Exists)
-                    {
-                        _logger.LogInformation("File {FileName} still exists deleting", persistPackageRequest.PackageName);
-                        fileInfo.Delete();
+                        persistPackageRequest.PackageStream.Seek(0, SeekOrigin.Begin);
                     }
+                    var filePath = Path.Combine(_pacmanOptions.Value.SaveDirectory, persistPackageRequest.PackageName);
+                    try
+                    {
+                        await using var fileStream = new FileStream(filePath, new FileStreamOptions
+                        {
+                            Access = FileAccess.Write,
+                            Mode = FileMode.Create,
+                            Options = FileOptions.WriteThrough,
+                            Share = FileShare.None,
+                            UnixCreateMode = FILE_PERM
+                        });
+                        await persistPackageRequest.PackageStream.CopyToAsync(fileStream, stoppingToken);
+                        await fileStream.FlushAsync(stoppingToken);
+                    }
+                    //persist file
+                    catch (Exception)
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        if (fileInfo.Exists)
+                        {
+                            _logger.LogInformation("File {FileName} still exists deleting",
+                                persistPackageRequest.PackageName);
+                            fileInfo.Delete();
+                        }
+                    }
+                    finally
+                    {
+                        await persistPackageRequest.PackageStream.DisposeAsync();
+                    }
+                    _logger.LogInformation("Saved {FileName} to {FilePath}", persistPackageRequest.PackageName, filePath);
+
                 }
                 
-                _logger.LogInformation("Saved {FileName} to {FilePath}", persistPackageRequest.PackageName, filePath);
+                
+                
             }
 
         }

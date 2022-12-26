@@ -8,18 +8,19 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
 {
     private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
+    private readonly string _fileName = Path.GetTempFileName();
     private readonly FileStream _fileStream;
     private readonly ILogger<PacmanPackageStream> _logger = NullLogger<PacmanPackageStream>.Instance;
 
     public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature)
     {
         _originalBodyFeature = originalBodyFeature;
-        _fileStream = new FileStream(Path.GetTempFileName(), new FileStreamOptions
+        _fileStream = new FileStream(_fileName, new FileStreamOptions
         {
             Access = FileAccess.Write,
             BufferSize = 0,
             Mode = FileMode.Create,
-            Options = FileOptions.DeleteOnClose,
+            Options = FileOptions.SequentialScan,
             Share = FileShare.Delete
         });
     }
@@ -30,33 +31,24 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
         _originalBodyFeature.DisableBuffering();
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = new CancellationToken())
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        await _fileStream.FlushAsync(cancellationToken);
+        await _originalBodyFeature.StartAsync(cancellationToken);
     }
 
     public async Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = new CancellationToken())
     {
-        throw new NotImplementedException();
+        await _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
     }
 
     public async Task CompleteAsync()
     {
-        throw new NotImplementedException();
+        await _fileStream.FlushAsync();
+        await _originalBodyFeature.CompleteAsync();
     }
 
-    public PipeWriter Writer
-    {
-        get
-        {
-            if (_pipeAdapter == null)
-            {
-                _pipeAdapter = PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
-            }
-
-            return _pipeAdapter;
-        }
-    }
+    public PipeWriter Writer => _pipeAdapter ??= PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
 
     public override void Flush()
     {
@@ -118,15 +110,20 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
 
     public override async ValueTask DisposeAsync()
     {
-        await _fileStream.DisposeAsync();
+        if (_fileStream != null) await _fileStream.DisposeAsync();
         await _originalBodyFeature.Stream.DisposeAsync();
         await base.DisposeAsync();
     }
 
     protected override void Dispose(bool disposing)
     {
-        _fileStream.Dispose();
+        _fileStream?.Dispose();
         _originalBodyFeature.Stream.Dispose();
         base.Dispose(disposing);
+    }
+
+    public FileStream GetTempFile()
+    {
+        return File.Open(_fileName, FileMode.Open, FileAccess.Read, FileShare.Delete);
     }
 }
