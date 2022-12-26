@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Middleware;
+using Yarp.ReverseProxy.Model;
 
 namespace Pacman.NET.Utilities;
 
@@ -35,6 +36,7 @@ public static class WebApplicationExtensions
             .LoadFromMemory(Array.Empty<RouteConfig>(), Array.Empty<ClusterConfig>());
         
         builder.Services.AddOptions<PacmanOptions>()
+            .BindConfiguration("Pacman")
             .Configure(opt =>
             {
                 if(builder.Environment.IsDevelopment())
@@ -42,36 +44,17 @@ public static class WebApplicationExtensions
                     var homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                     opt.SaveDirectory = Path.Combine(homeDirectory, ".cache", "pacnet");
                 }
-
-                var appDate = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var app = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var apsp = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                var varF = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                var varF2 = Environment.GetFolderPath(Environment.SpecialFolder.System);
-
             })
             .PostConfigure(opt =>
             {
                 Directory.CreateDirectory(opt.SaveDirectory);
             })
-            .BindConfiguration("Pacman")
             .ValidateDataAnnotations()
             .ValidateOnStart();
         
         builder.Services.AddMemoryCache();
         builder.Services.AddOptions<ApplicationOptions>()
             .BindConfiguration("PacmanConfig")
-            .Configure(opt =>
-            {
-                var cacheUri = new Uri(opt.CustomRepoDir, UriKind.RelativeOrAbsolute);
-                
-                if (!cacheUri.IsAbsoluteUri)
-                {
-                    opt.CustomRepoDir = Path.Combine(builder.Environment.ContentRootPath, opt.CustomRepoDir);
-                }
-
-                Directory.CreateDirectory(opt.CustomRepoDir);
-            })
             .ValidateDataAnnotations()
             .ValidateOnStart();
         
@@ -85,23 +68,23 @@ public static class WebApplicationExtensions
 
         var compositeProvider = new CompositeFileProvider(
             new PhysicalFileProvider(pacmanOptions.CacheDirectory),
-            new PhysicalFileProvider(pacmanOptions.DbDirectory),
+            new PhysicalFileProvider(pacmanOptions.DbDirectory!),
             new PhysicalFileProvider(pacmanOptions.SaveDirectory)
         );
         
-        app.UseFileServer(new FileServerOptions
-        {
-            RequestPath = pacmanOptions.BaseAddress,
-            FileProvider = compositeProvider,
-            EnableDefaultFiles = false,
-            RedirectToAppendTrailingSlash = true,
-            EnableDirectoryBrowsing = true,
-            StaticFileOptions =
-            {
-                DefaultContentType = "application/octet-stream",
-                ServeUnknownFileTypes = true
-            }
-        });
+        // app.UseFileServer(new FileServerOptions
+        // {
+        //     RequestPath = pacmanOptions.BaseAddress,
+        //     FileProvider = compositeProvider,
+        //     EnableDefaultFiles = false,
+        //     RedirectToAppendTrailingSlash = true,
+        //     EnableDirectoryBrowsing = true,
+        //     StaticFileOptions =
+        //     {
+        //         DefaultContentType = "application/octet-stream",
+        //         ServeUnknownFileTypes = true
+        //     }
+        // });
         
         app.UseMiddleware<PackageCacheMiddleware>();
 
@@ -115,8 +98,20 @@ public static class WebApplicationExtensions
             var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
             var proxyFeature = ctx.GetReverseProxyFeature();
             
-            await next(ctx); 
+            var logger = ctx.RequestServices.GetRequiredService<ILogger<IReverseProxyFeature>>();
+            
+            await next(ctx);
+            logger.LogInformation("Proxied request code {Status}", ctx.Response.StatusCode);
+          
             var errorFeature = ctx.GetForwarderErrorFeature();
+            var lengthBefore = ctx.Response.ContentLength;
+            logger.LogInformation("Started: {State}, Size: {Size2}", ctx.Response.HasStarted, lengthBefore);
+
+            if (ctx.Response.HasStarted)
+            { 
+                logger.LogInformation("Response has started for {Name}", ctx.Request.Path);
+                return;
+            }
             if (errorFeature is not null && !ctx.Response.HasStarted)
             {
                 ctx.Response.Clear();

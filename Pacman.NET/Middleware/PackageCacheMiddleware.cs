@@ -9,7 +9,7 @@ namespace Pacman.NET.Middleware;
 
 public class PackageCacheMiddleware : IMiddleware
 {
-    private static readonly string[] _excludedFileTypes = { "db", "db.sig", "files"};
+    private static readonly string[] _excludedFileTypes = { ".db", ".sig", ".files"};
     private readonly PacmanOptions _cacheOptions;
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly IPacmanService _pacmanService;
@@ -170,18 +170,18 @@ public class PackageCacheMiddleware : IMiddleware
         else
         {
             _logger.LogDebug("Skipping pacman cache middleware at {Path}", path);
+            await next(ctx);
         }
 
-        await next(ctx);
         
         //if response still hasn't started then declare it as a 404
-        if (!ctx.Response.HasStarted)
-        {
-            _logger.LogDebug("No file found for {Name}", path);
-            ctx.Response.Clear();
-            ctx.Response.StatusCode = 404;
-            await ctx.Response.CompleteAsync();
-        }
+        // if (!ctx.Response.HasStarted)
+        // {
+        //     _logger.LogDebug("No file found for {Name}", path);
+        //     ctx.Response.Clear();
+        //     ctx.Response.StatusCode = 404;
+        //     await ctx.Response.CompleteAsync();
+        // }
         // //it is important that no execute permission should ever be given to new files
         // const UnixFileMode GLOBAL_READ = UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
         // const UnixFileMode FILE_PERM = GLOBAL_READ | UnixFileMode.UserWrite;
