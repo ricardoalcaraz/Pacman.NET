@@ -8,17 +8,14 @@ public class PersistentFileService : BackgroundService
     const UnixFileMode FILE_PERM = GLOBAL_READ | UnixFileMode.UserWrite;
     
     private readonly ILogger<PersistentFileService> _logger;
-    private readonly IOptions<PersistentFileServiceOptions> _options;
     private readonly IOptions<PacmanOptions> _pacmanOptions;
     private readonly Channel<PackageCacheRequest> _channel;
 
-    public PersistentFileService(ILogger<PersistentFileService> logger, 
-        IOptions<PersistentFileServiceOptions> options, IOptions<PacmanOptions> pacmanOptions)
+    public PersistentFileService(ILogger<PersistentFileService> logger, IOptions<PacmanOptions> pacmanOptions)
     {
         _logger = logger;
-        _options = options;
         _pacmanOptions = pacmanOptions;
-        _channel = options.Value.Channel;
+        _channel = Channel.CreateUnbounded<PackageCacheRequest>();
     }
     
     
@@ -28,9 +25,10 @@ public class PersistentFileService : BackgroundService
         //use retry policy
         try
         {
-            await foreach (var persistPackageRequest in _options.Value.Channel.Reader.ReadAllAsync(stoppingToken))
+            await foreach (var persistPackageRequest in _channel.Reader.ReadAllAsync(stoppingToken))
             {
-                _logger.LogInformation("File {FileName} has been processed", persistPackageRequest);
+                _logger.LogInformation("Processing {FileName}", persistPackageRequest);
+                
                 if (persistPackageRequest.PackageStream.CanSeek)
                 {
                     persistPackageRequest.PackageStream.Seek(0, SeekOrigin.Begin);
@@ -77,7 +75,7 @@ public class PersistentFileService : BackgroundService
         }
         finally
         {
-            _options.Value.Channel.Writer.TryComplete();
+            _channel.Writer.TryComplete();
         }
         
         _logger.LogInformation("Shut down background service safely");
@@ -86,13 +84,8 @@ public class PersistentFileService : BackgroundService
     public ValueTask EnqueueRequest(PackageCacheRequest request)
     {
         _logger.LogInformation("Adding {Request} to queue", request);
-        return _options.Value.Channel.Writer.WriteAsync(request);
+        return _channel.Writer.WriteAsync(request);
     }
-}
-
-public record PersistentFileServiceOptions
-{
-    public Channel<PackageCacheRequest> Channel { get; init; }
 }
 
 public record PackageCacheRequest
@@ -100,3 +93,4 @@ public record PackageCacheRequest
     public string PackageName { get; init; }
     public Stream PackageStream { get; init; }
 }
+

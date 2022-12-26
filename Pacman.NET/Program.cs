@@ -1,4 +1,5 @@
 using Pacman.NET.Utilities;
+using Yarp.ReverseProxy.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,10 +25,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseAuthorization();
 app.UseRouting();
+    
+app.UseAuthorization();
 app.UsePacmanCache();
-app.MapReverseProxy();
+app.MapReverseProxy(proxy =>
+{
+    proxy.UseLoadBalancing();
+    proxy.UsePassiveHealthChecks();
+    proxy.UsePackageCache();
+});
 
 app.MapControllers();
 

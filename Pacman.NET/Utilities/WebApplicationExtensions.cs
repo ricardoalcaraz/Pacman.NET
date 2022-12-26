@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Middleware;
 
@@ -10,6 +11,8 @@ public static class WebApplicationExtensions
         builder.Services.AddScoped<PackageCacheMiddleware>();
         builder.Services.AddSingleton<MirrorSyncService>();
         builder.Services.AddSingleton<PacmanService>();
+        builder.Services.AddSingleton<PersistentFileService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<PersistentFileService>());
         builder.Services.AddSingleton<IPacmanService, PacmanService>(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
@@ -32,6 +35,25 @@ public static class WebApplicationExtensions
             .LoadFromMemory(Array.Empty<RouteConfig>(), Array.Empty<ClusterConfig>());
         
         builder.Services.AddOptions<PacmanOptions>()
+            .Configure(opt =>
+            {
+                if(builder.Environment.IsDevelopment())
+                {
+                    var homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    opt.SaveDirectory = Path.Combine(homeDirectory, ".cache", "pacnet");
+                }
+
+                var appDate = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var app = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var apsp = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+                var varF = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var varF2 = Environment.GetFolderPath(Environment.SpecialFolder.System);
+
+            })
+            .PostConfigure(opt =>
+            {
+                Directory.CreateDirectory(opt.SaveDirectory);
+            })
             .BindConfiguration("Pacman")
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -84,5 +106,23 @@ public static class WebApplicationExtensions
         app.UseMiddleware<PackageCacheMiddleware>();
 
         return app;
+    }
+
+    public static IReverseProxyApplicationBuilder UsePackageCache(this IReverseProxyApplicationBuilder proxyBuilder)
+    {
+        proxyBuilder.Use(async (ctx, next) =>
+        {
+            var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
+            var proxyFeature = ctx.GetReverseProxyFeature();
+            
+            await next(ctx); 
+            var errorFeature = ctx.GetForwarderErrorFeature();
+            if (errorFeature is not null && !ctx.Response.HasStarted)
+            {
+                ctx.Response.Clear();
+                ctx.Response.StatusCode = 500;
+            }
+        });
+        return proxyBuilder;
     }
 }

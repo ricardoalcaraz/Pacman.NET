@@ -7,18 +7,17 @@ namespace Pacman.NET.Options;
 public record PacmanOptions
 {
     [Required]
-    [AbsoluteFilePath]
-    public required string BaseAddress { get; init; }
+    public required string BaseAddress { get; init; } = "archlinux";
     
     [Required]
-    [Url]
+    [AbsoluteFilePath]
     public required string CacheDirectory { get; init; }
     
     [Required]
-    public required string DbDirectory { get; init; }
+    public string? DbDirectory { get; set; }
     
     [Required]
-    public required string SaveDirectory { get; init; } 
+    public required string SaveDirectory { get; set; } 
 }
 
 public record ApplicationOptions
