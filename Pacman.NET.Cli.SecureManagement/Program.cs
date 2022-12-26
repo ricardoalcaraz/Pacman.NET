@@ -2,6 +2,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -49,37 +50,44 @@ var cliOptions = config.Get<CliAppOptions>()!;
 
 void AddPubKey(string keyId)
 {
-    var tmpFileName = Path.GetTempFileName();
     using var process = new Process();
-    process.StartInfo = new ProcessStartInfo("/usr/bin/gpg", $"--armor --output {tmpFileName} --export {keyId}")
+    process.StartInfo = new ProcessStartInfo("/usr/bin/gpg", $"--armor --export {keyId}")
     {
         UseShellExecute = false,
         RedirectStandardOutput = true,
         RedirectStandardError = true,
         CreateNoWindow = true
     };
+    
     process.Start();
-    process.WaitForExit();
+    var tmpFileName = Path.GetTempFileName();
 
-    process.StartInfo = new ProcessStartInfo("/usr/bin/pacman-key", $"--add {tmpFileName}")
+    using var tmpFileStream = new FileStream(tmpFileName, new FileStreamOptions
     {
-        UseShellExecute = false,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        CreateNoWindow = true
-    };
-    process.Start();
-    process.WaitForExit();
+        Access = FileAccess.Write,
+        BufferSize = 0,
+        Mode = FileMode.Create,
+        Options = FileOptions.DeleteOnClose,
+        Share = FileShare.Delete
+    });
+    process.StandardOutput.BaseStream.CopyTo(tmpFileStream);
 
-    process.StartInfo = new ProcessStartInfo("/usr/bin/pacman-key", $"--lsign {keyId}")
+    logger.LogDebug("{Key}", File.ReadAllText(tmpFileName));
+    logger.LogDebug("Wrote key to {File}", tmpFileName);
+    using var addKeyProcess = Process.Start("/usr/bin/pacman-key", $"--add {tmpFileName}");
+    
+    addKeyProcess.WaitForExit();
+
+    using var signKeyProcess = new Process();//Process.Start("/usr/bin/pacman-key", $"-u ralcaraz --lsign {keyId}");
+    signKeyProcess.StartInfo = new ProcessStartInfo("/usr/bin/gpg", $"--armor --export {keyId}")
     {
         UseShellExecute = false,
         RedirectStandardOutput = true,
         RedirectStandardError = true,
         CreateNoWindow = true
     };
-    process.Start();
-    process.WaitForExit();
+    signKeyProcess.Start();
+    signKeyProcess.WaitForExit();
 }
 
 var compositeFileProvider = new CompositeFileProvider(

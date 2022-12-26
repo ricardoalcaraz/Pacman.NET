@@ -162,9 +162,8 @@ public class PackageCacheMiddleware : IMiddleware
                 ctx.Response.ContentType = "application/octet-stream";
                 ctx.Response.ContentLength = cachedFileInfo.Length;
                 _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.StartAsync();
                 await ctx.Response.SendFileAsync(fileName);
-                return;
+                await ctx.Response.StartAsync();
             }
         }
         else

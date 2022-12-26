@@ -110,6 +110,13 @@ public static class WebApplicationExtensions
             {
                 ctx.Features.Set(originalBody);
             }
+
+            var ifModifiedSince = ctx.Request.Headers.IfModifiedSince.LastOrDefault();
+            if (DateTime.TryParse(ifModifiedSince, out var dateTime))
+            {
+                logger.LogInformation("Modified since header : {Time}", dateTime.ToLocalTime());
+            }
+
             logger.LogInformation("Proxied request code {Status}", ctx.Response.StatusCode);
           
             var errorFeature = ctx.GetForwarderErrorFeature();
@@ -121,7 +128,6 @@ public static class WebApplicationExtensions
                 logger.LogInformation("Response has started for {Name}", ctx.Request.Path);
                 return;
             }
-            
             if (errorFeature is not null && !ctx.Response.HasStarted)
             {
                 ctx.Response.Clear();
