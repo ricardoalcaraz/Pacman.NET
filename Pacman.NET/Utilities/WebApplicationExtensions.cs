@@ -96,11 +96,20 @@ public static class WebApplicationExtensions
         proxyBuilder.Use(async (ctx, next) =>
         {
             var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
+            var pacmanCacheBody = new PacmanPackageStream(originalBody);            
+            ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
+            
             var proxyFeature = ctx.GetReverseProxyFeature();
-            
             var logger = ctx.RequestServices.GetRequiredService<ILogger<IReverseProxyFeature>>();
-            
-            await next(ctx);
+
+            try
+            {
+                await next(ctx);
+            }
+            finally
+            {
+                ctx.Features.Set(originalBody);
+            }
             logger.LogInformation("Proxied request code {Status}", ctx.Response.StatusCode);
           
             var errorFeature = ctx.GetForwarderErrorFeature();
@@ -112,6 +121,7 @@ public static class WebApplicationExtensions
                 logger.LogInformation("Response has started for {Name}", ctx.Request.Path);
                 return;
             }
+            
             if (errorFeature is not null && !ctx.Response.HasStarted)
             {
                 ctx.Response.Clear();

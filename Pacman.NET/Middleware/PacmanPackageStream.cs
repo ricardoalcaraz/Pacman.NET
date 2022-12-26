@@ -1,27 +1,61 @@
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Middleware;
 
-public class PacmanPackageStream : Stream
+public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
 {
+    private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
     private readonly FileStream _fileStream;
-    private readonly ILogger<PacmanPackageStream> _logger;
+    private readonly ILogger<PacmanPackageStream> _logger = NullLogger<PacmanPackageStream>.Instance;
 
-    public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature,
-        FileStream fileStream,
-        ILogger<PacmanPackageStream> logger)
+    public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature)
     {
         _originalBodyFeature = originalBodyFeature;
-        _fileStream = fileStream;
-        _logger = logger;
+        _fileStream = new FileStream(Path.GetTempFileName(), new FileStreamOptions
+        {
+            Access = FileAccess.Write,
+            BufferSize = 0,
+            Mode = FileMode.Create,
+            Options = FileOptions.DeleteOnClose,
+            Share = FileShare.Delete
+        });
     }
 
 
     public void DisableBuffering()
     {
         _originalBodyFeature.DisableBuffering();
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken = new CancellationToken())
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = new CancellationToken())
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task CompleteAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public PipeWriter Writer
+    {
+        get
+        {
+            if (_pipeAdapter == null)
+            {
+                _pipeAdapter = PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
+            }
+
+            return _pipeAdapter;
+        }
     }
 
     public override void Flush()
@@ -40,7 +74,7 @@ public class PacmanPackageStream : Stream
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        return _originalBodyFeature.Stream.Read(buffer, offset, count);
+        throw new NotSupportedException();
     }
 
     public override long Seek(long offset, SeekOrigin origin)
@@ -50,7 +84,7 @@ public class PacmanPackageStream : Stream
 
     public override void SetLength(long value)
     {
-        _originalBodyFeature.Stream.SetLength(value);
+        throw new NotSupportedException();
     }
 
     public override void Write(byte[] buffer, int offset, int count)
@@ -66,16 +100,21 @@ public class PacmanPackageStream : Stream
         await _originalBodyFeature.Stream.WriteAsync(memoryBuffer, ctx);
     }
 
-    public override bool CanRead => _originalBodyFeature.Stream.CanRead;
-    public override bool CanSeek => _originalBodyFeature.Stream.CanSeek;
-    public override bool CanWrite => _originalBodyFeature.Stream.CanWrite;
-    public override long Length => _originalBodyFeature.Stream.Length;
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => _fileStream.CanWrite;
+    public override long Length
+    {
+        get { throw new NotSupportedException(); }
+    }
 
     public override long Position
     {
-        get => _originalBodyFeature.Stream.Position;
-        set => _originalBodyFeature.Stream.Position = value;
+        get { throw new NotSupportedException(); }
+        set { throw new NotSupportedException(); }
     }
+
+    public Stream Stream => this;
 
     public override async ValueTask DisposeAsync()
     {
