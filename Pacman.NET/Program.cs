@@ -1,5 +1,4 @@
 using Pacman.NET.Utilities;
-using Yarp.ReverseProxy.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
