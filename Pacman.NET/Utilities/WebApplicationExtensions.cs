@@ -32,23 +32,12 @@ public static class WebApplicationExtensions
         
         builder.Services.AddOptions<PacmanOptions>()
             .BindConfiguration("Pacman")
-            .Configure(opt =>
-            {
-                var cacheUri = new Uri(opt.CacheDirectory, UriKind.RelativeOrAbsolute);
-                
-                if (!cacheUri.IsAbsoluteUri)
-                {
-                    opt.CacheDirectory = Path.Combine(builder.Environment.ContentRootPath, opt.CacheDirectory);
-                }
-
-                Directory.CreateDirectory(opt.CacheDirectory);
-            })
             .ValidateDataAnnotations()
             .ValidateOnStart();
         
         builder.Services.AddMemoryCache();
         builder.Services.AddOptions<ApplicationOptions>()
-            .BindConfiguration("Pacman")
+            .BindConfiguration("PacmanConfig")
             .Configure(opt =>
             {
                 var cacheUri = new Uri(opt.CustomRepoDir, UriKind.RelativeOrAbsolute);
@@ -70,12 +59,17 @@ public static class WebApplicationExtensions
     public static WebApplication UsePacmanCache(this WebApplication app)
     {
         var pacmanOptions = app.Services.GetRequiredService<IOptions<PacmanOptions>>().Value;
-        app.UseMiddleware<PackageCacheMiddleware>();
 
+        var compositeProvider = new CompositeFileProvider(
+            new PhysicalFileProvider(pacmanOptions.CacheDirectory),
+            new PhysicalFileProvider(pacmanOptions.DbDirectory),
+            new PhysicalFileProvider(pacmanOptions.SaveDirectory)
+        );
+        
         app.UseFileServer(new FileServerOptions
         {
             RequestPath = pacmanOptions.BaseAddress,
-            FileProvider = new PhysicalFileProvider(pacmanOptions.CacheDirectory),
+            FileProvider = compositeProvider,
             EnableDefaultFiles = false,
             RedirectToAppendTrailingSlash = true,
             EnableDirectoryBrowsing = true,
@@ -85,6 +79,8 @@ public static class WebApplicationExtensions
                 ServeUnknownFileTypes = true
             }
         });
+        
+        app.UseMiddleware<PackageCacheMiddleware>();
 
         return app;
     }

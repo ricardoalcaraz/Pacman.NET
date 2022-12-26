@@ -1,13 +1,24 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Options;
 
 public record PacmanOptions
 {
+    [Required]
+    [AbsoluteFilePath]
     public required string BaseAddress { get; init; }
-    public required string Configuration { get; init; }
-    public required string CacheDirectory { get; set; }
-    public required string DbDirectory { get; set; }
+    
+    [Required]
+    [Url]
+    public required string CacheDirectory { get; init; }
+    
+    [Required]
+    public required string DbDirectory { get; init; }
+    
+    [Required]
+    public required string SaveDirectory { get; init; } 
 }
 
 public record ApplicationOptions
@@ -44,4 +55,42 @@ public record PackageCacheOptions
     public required string BasePath { get; set; }
     public required IFileProvider FileProvider { get; set; }
     public required string SavePath { get; set; }
+}
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter,
+    AllowMultiple = false)]
+public sealed class AbsoluteFilePath : ValidationAttribute
+{
+    private readonly ILogger<AbsoluteFilePath> _logger;
+
+
+    public AbsoluteFilePath()
+    {
+        ErrorMessage = "The {0} field must be an absolute file path.";
+        _logger = NullLogger<AbsoluteFilePath>.Instance;
+    }
+
+    public override bool IsValid(object? value)
+    {
+        if (value == null)
+        {
+            return true;
+        }
+
+        if (value is string filePath)
+        {
+            try
+            {
+                _logger.LogDebug("Validating absolute file path: {Path}", filePath);
+                var fileUri = new Uri(filePath, UriKind.Absolute);
+                return fileUri.IsAbsoluteUri;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "{Path} is not an absolute path", filePath);
+            }
+        }
+        
+        return false;
+    }
 }

@@ -30,9 +30,9 @@ public class CustomWebAppFactory : WebApplicationFactory<PacmanOptions>
             var options = new OptionsWrapper<PacmanOptions>(new PacmanOptions
             {
                 BaseAddress = "/archlinux",
-                Configuration = "",
                 CacheDirectory = $"{currentDir}/Content",
                 DbDirectory = $"{currentDir}/Db",
+                SaveDirectory = $"{currentDir}/Save",
             });
             s.AddSingleton<IOptions<PacmanOptions>>(options);
         });
