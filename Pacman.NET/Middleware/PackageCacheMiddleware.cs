@@ -1,4 +1,6 @@
 using System.Buffers;
+using System.IO.Pipelines;
+using System.Security.AccessControl;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
@@ -7,27 +9,24 @@ using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Middleware;
 
+
 public class PackageCacheMiddleware : IMiddleware
 {
-    private readonly IOptions<PacmanOptions> _cacheOptions;
-    private readonly string[] _excludedFileTypes;
+    private static readonly string[] _excludedFileTypes = { "db", "db.sig", "files"};
+    private readonly PacmanOptions _cacheOptions;
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly IPacmanService _pacmanService;
-    private readonly IMemoryCache _memoryCache;
-    private readonly PhysicalFileProvider _fileProvider;
+    private readonly IFileProvider _fileProvider;
 
 
-    public PackageCacheMiddleware(IOptions<PacmanOptions> cacheOptions,
-        ILogger<PackageCacheMiddleware> logger,
-        IPacmanService pacmanService,
-        IMemoryCache memoryCache)
+    public PackageCacheMiddleware(ILogger<PackageCacheMiddleware> logger,
+        IOptions<PacmanOptions> cacheOptions, 
+        IPacmanService pacmanService)
     {
-        _cacheOptions = cacheOptions;
+        _cacheOptions = cacheOptions.Value;
         _logger = logger;
         _pacmanService = pacmanService;
-        _memoryCache = memoryCache;
         _fileProvider = new PhysicalFileProvider(cacheOptions.Value.CacheDirectory);
-        _excludedFileTypes = new[] { "db", "db.sig", "files" };
     }
 
 
@@ -36,13 +35,10 @@ public class PackageCacheMiddleware : IMiddleware
     /// </summary>
     /// <param name="context">The <see cref="HttpContext" />.</param>
     /// <returns>A task that represents the execution of this middleware.</returns>
-    public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
+    public async Task Invoke(HttpContext ctx)
     {
-        var options = _cacheOptions.Value;
-
         var path = ctx.Request.Path;
-
-        if (path.StartsWithSegments(options.BaseAddress, out var relativePath))
+        if (path.StartsWithSegments(_cacheOptions.BaseAddress, out var relativePath))
         {
             var endpoint = ctx.GetEndpoint();
             //TODO: avoid doing work if custom repo is called
@@ -50,35 +46,44 @@ public class PackageCacheMiddleware : IMiddleware
             {
                 var uri = new Uri(relativePath);
                 var fileName = uri.Segments.Last();
-                var excludedFileType = _excludedFileTypes.SingleOrDefault(e => fileName.EndsWith(e));
-
-                if (excludedFileType is not null)
+                var fileInfo = _fileProvider.GetFileInfo(fileName);
+                var isDb = fileName.EndsWith(".db");
+                var isSig = fileName.EndsWith(".sig");
+                
+                if (isSig)
                 {
-                    _logger.LogDebug("Excluded file {Type} will be proxied", excludedFileType);
-                    await next(ctx);
                     return;
                 }
                 
-                var fileInfo = _fileProvider.GetFileInfo(fileName);
-                
-                ctx.Response.Body = fileInfo switch
-                {
-                    {Exists: true} when excludedFileType is null => fileInfo.CreateReadStream(),
-                    {Exists: false} => await ProxyStream(excludedFileType!),
-                    _ => Stream.Null
-                };
-                
-                ctx.Response.ContentLength = 0;
-                ctx.Response.ContentType = "application/octet-stream";
-
                 //stream downloaded file to response body
-                if (!fileInfo.Exists || fileInfo.Length <= 1)
+                if (!fileInfo.Exists || isDb || fileInfo.Length <= 1)
                 {
                     _logger.LogDebug("Proxying request for {Name}", fileInfo.Name);
-                    await using var fileStream = new FileStream($"{options.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
+                    var fileName = Path.GetRandomFileName();
+
+                    var savePath = Path.Combine(_cacheOptions.SaveDirectory, fileName);
+                    var filePkgInfo = new FileInfo(savePath);
+                    if(filePkgInfo.Exists)
+                    {
+                        await using var fileStream = filePkgInfo.OpenRead();
+                        await fileStream.CopyToAsync(ctx.Response.Body);
+                        return;
+                    }
+                    await using var fileStream = new FileStream($"{_cacheOptions.CacheDirectory}/{fileName}", FileMode.OpenOrCreate);
                     await DownloadPacmanPackage(ctx, fileStream);
                 }
-
+                else if (fileInfo.Exists)
+                {
+                    ctx.Response.ContentType = "application/octet-stream";
+                    ctx.Response.ContentLength = fileInfo.Length;
+                    await ctx.Response.StartAsync();
+                    await ctx.Response.SendFileAsync(fileInfo);
+                }
+                if (isDb)
+                {
+                    return;
+                }
+                
                 return;
             }
 
@@ -102,8 +107,9 @@ public class PackageCacheMiddleware : IMiddleware
         }
 
         _logger.LogTrace("Skipping pacman cache middleware");
-        await next(ctx);
+        await _next(ctx);
     }
+
 
     private async Task SetHeaders(HttpContext ctx)
     {
@@ -114,41 +120,22 @@ public class PackageCacheMiddleware : IMiddleware
         }
     }
 
-    private Task<Stream> ProxyStream(string fileName)
-    {
-        return Task.FromResult(Stream.Null);
-    }
 
     public async Task GetRateLimiterAsync(HttpContext context)
     {
         var enableRateLimitingAttribute = context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>();
-        var rateLimiterOptions = new SlidingWindowRateLimiterOptions
-        {
-            AutoReplenishment = true,
-            PermitLimit = 6,
-            QueueLimit = 6,
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            SegmentsPerWindow = 5,
-            Window = TimeSpan.FromMinutes(1)
-        };
-        var slidingWindow = new SlidingWindowRateLimiter(rateLimiterOptions);
 
-        //represents the total size of the file
-        var permitCount = 25;
+        var slidingWindow = new SlidingWindowRateLimiter(_rateLimiterOptions.Value);
 
-        var packageStream = await _pacmanService.GetPackageStream(context.Request.Path, context.RequestAborted);
-
-        var tempFileName = Path.GetTempFileName();
-        await using var fileStream = File.OpenWrite(tempFileName);
         await SetHeaders(context);
-
+        var tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
         var bufferSize = 1024 * 16;
         var bytesRead = 0;
         do
         {
             using var lease = await slidingWindow.AcquireAsync(permitCount);
             var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-
+            
             bytesRead = await packageStream.ReadAsync(buffer, context.RequestAborted);
             var dataReceived = buffer.AsMemory(0, bytesRead);
 
@@ -159,13 +146,90 @@ public class PackageCacheMiddleware : IMiddleware
     }
 
 
-    public Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
+    public async Task DownloadPacmanPackage(HttpContext context, FileStream cacheStream)
     {
         var originalBody = context.Features.Get<IHttpResponseBodyFeature>()!;
-        var logger = context.RequestServices.GetRequiredService<ILogger<PacmanPackageBody>>();
-        var httpResponseBodyFeature = new PacmanPackageBody(originalBody, cacheStream, logger);
-        context.Features.Set<IHttpResponseBodyFeature>(httpResponseBodyFeature);
+        var body = new PacmanPackageBody(originalBody, cacheStream);
+        context.Features.Set<IHttpResponseBodyFeature>(body);
+        context.Response.ContentType = "application/octet-stream";
+     
+        await _next(context);
+        //context.Features.Set(originalBody);
+    }
 
-        return Task.CompletedTask;
+
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        //represents the total size of the file
+        var fileName = Path.GetFileName(context.Request.Path);
+        
+        var fileInfo = new FileInfo(fileName);
+        
+        //it is important that no execute permission should ever be given to new files
+        const UnixFileMode GLOBAL_READ = UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        const UnixFileMode FILE_PERM = GLOBAL_READ | UnixFileMode.UserWrite;
+
+        _logger.LogDebug("{Name} has {Perm} permissions", fileInfo.Name, fileInfo.UnixFileMode);
+        
+        //set file permissions as a precaution to ensure no executable files are being used as a cache
+        fileInfo.UnixFileMode = FILE_PERM;
+        var name = Path.GetTempFileName();
+        if (fileInfo.Exists)
+        {
+            try
+            {
+                var tmpFileStreamOptions = new FileStreamOptions
+                {
+                    BufferSize = 4096,
+                    Access = FileAccess.Read,
+                    Mode = FileMode.Create,
+                    Options = FileOptions.DeleteOnClose,
+                    PreallocationSize = 4096,
+                    Share = FileShare.Read,
+                    UnixCreateMode = FILE_PERM
+                };
+            
+                var tmpFileStream = new FileStream(name, tmpFileStreamOptions);
+
+                //remove execute permissions on file 
+                fileInfo.UnixFileMode &= ~(UnixFileMode.UserExecute | UnixFileMode.OtherExecute | UnixFileMode.GroupExecute);
+                
+                //after file is down downloading create background process to save tmp file to disk
+                
+            }
+            catch (IOException)
+            {
+
+            }
+            catch(UnauthorizedAccessException)
+            {
+
+            }
+        }
+        else
+        {
+            
+        }
+        
+        var tempFileName = name;
+        try
+        {
+            var tmpFile = name;
+            await using var tmpFileStream = new FileStream(tmpFile, FileMode.Create, FileAccess.Read, FileShare.None);
+            var fileSte = new FileStream(tempFileName, FileMode.Create, FileAccess.Read, FileShare.Read);
+            await using var fileStream = File.OpenWrite(tempFileName);
+            
+            //wrap body stream in a rate limiter
+            await next(context);
+            
+            //file cleanup
+            
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning("Permission denied to write {File} to {Path}", tempFileName, _cacheOptions.SaveDirectory);
+        }
+
+        await next(context);
     }
 }
