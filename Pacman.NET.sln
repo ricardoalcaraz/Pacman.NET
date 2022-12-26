@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.BlazorServer", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Client.Blazor", "Pacman.NET.Client.Blazor\Pacman.NET.Client.Blazor.csproj", "{36B7DEE5-708F-446B-84B3-B912A7CF48D7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Cli.SecureManagement", "Pacman.NET.Cli.SecureManagement\Pacman.NET.Cli.SecureManagement.csproj", "{158F723C-5CEF-4439-A4F1-C28237586A4E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36B7DEE5-708F-446B-84B3-B912A7CF48D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
