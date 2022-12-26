@@ -15,6 +15,7 @@ public static class WebApplicationExtensions
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
         builder.Services.AddHttpClient<MirrorClient>();
         builder.Services.AddSingleton<PacmanConfigParser>();
+        builder.Services.AddScoped<PackageCacheMiddleware>();
         var mirrorConfigSetting = builder.Configuration["Pacman:MirrorUrl"] ?? throw new InvalidOperationException("MirrorUrl is a required config setting");
         var mirrorUri = new Uri(mirrorConfigSetting, UriKind.Absolute);
         if (mirrorUri.IsFile)
