@@ -23,7 +23,7 @@ package()
     mkdir -p $pkgdir/usr/lib/sysusers.d
     echo 'u pacnet 1420 "Pacman.NET dedicated user"' > "$pkgdir/usr/lib/sysusers.d/$pkgname.conf"
     echo 'm pacnet http -' >> "$pkgdir/usr/lib/sysusers.d/$pkgname.conf"
-    
+    # Should go under /usr/lib/$pkgname instead
     mkdir -p $pkgdir/srv/http/$pkgname
     mkdir -p $pkgdir/opt/$pkgname
     

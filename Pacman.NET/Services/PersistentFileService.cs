@@ -35,6 +35,13 @@ public class PersistentFileService : BackgroundService
                     {
                         persistPackageRequest.PackageStream.Seek(0, SeekOrigin.Begin);
                     }
+                    
+                    await using (persistPackageRequest.SaveStream)
+                    {
+                        
+                    }
+                    
+                    
                     var filePath = Path.Combine(_pacmanOptions.Value.SaveDirectory, persistPackageRequest.PackageName);
                     try
                     {
@@ -93,6 +100,16 @@ public class PersistentFileService : BackgroundService
     public ValueTask EnqueueRequest(PackageCacheRequest request)
     {
         _logger.LogInformation("Adding {Request} to queue", request);
+        
+        var savePath = new FileStream(Path.Combine("", request.PackageName), new FileStreamOptions
+        {
+            Access = FileAccess.Write,
+            Mode = FileMode.Create,
+            Options = FileOptions.WriteThrough,
+            Share = FileShare.None,
+            UnixCreateMode = FILE_PERM
+        });
+        
         return _channel.Writer.WriteAsync(request);
     }
 }
@@ -101,5 +118,6 @@ public record PackageCacheRequest
 {
     public string PackageName { get; init; }
     public Stream PackageStream { get; init; }
+    public FileStream SaveStream { get; init; }
 }
 

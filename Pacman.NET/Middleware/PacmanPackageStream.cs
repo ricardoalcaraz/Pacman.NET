@@ -1,5 +1,6 @@
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Middleware;
@@ -41,7 +42,12 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
     {
         await _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
     }
+    public string GetFileName()
+    {
+        return _fileName;
+    }
 
+    public FileInfo PackageFileInfo() => new(_fileName);
     public async Task CompleteAsync()
     {
         await _fileStream.FlushAsync();
@@ -110,7 +116,7 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
 
     public override async ValueTask DisposeAsync()
     {
-        if (_fileStream != null) await _fileStream.DisposeAsync();
+        await _fileStream.DisposeAsync();
         await _originalBodyFeature.Stream.DisposeAsync();
         await base.DisposeAsync();
     }

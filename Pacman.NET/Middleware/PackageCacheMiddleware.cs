@@ -1,8 +1,6 @@
-using System.Buffers;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.FileProviders;
+using Yarp.ReverseProxy.Model;
 
 namespace Pacman.NET.Middleware;
 
@@ -30,7 +28,7 @@ public class PackageCacheMiddleware : IMiddleware
             new PhysicalFileProvider(_cacheOptions.CacheDirectory),
             new PhysicalFileProvider(_cacheOptions.DbDirectory!),
             new PhysicalFileProvider(_cacheOptions.SaveDirectory)
-        );;
+        );
     }
 
     //
@@ -151,31 +149,70 @@ public class PackageCacheMiddleware : IMiddleware
 
     public async Task InvokeAsync(HttpContext ctx, RequestDelegate next)
     {
-        var path = ctx.Request.Path;
-        var isPackageRequest = path.StartsWithSegments(_cacheOptions.BaseAddress, out var relativePath);
-        var isIgnoredFile = _excludedFileTypes.Contains(Path.GetExtension(relativePath));
-        
-        if (isPackageRequest && !isIgnoredFile)
+        if (ctx.Request.Path.StartsWithSegments(_cacheOptions.BaseAddress, out var pathString))
         {
-            var fileName = Path.GetFileName(ctx.Request.Path);
+            var fileName = Path.GetFileName(pathString);
             var cachedFileInfo = _fileProvider.GetFileInfo(fileName);
 
-            if (cachedFileInfo.Exists && !ctx.Response.HasStarted)
+            if (cachedFileInfo.Exists)
             {
                 ctx.Response.Clear();
                 ctx.Response.ContentType = "application/octet-stream";
-                ctx.Response.ContentLength = cachedFileInfo.Length;
                 _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.SendFileAsync(cachedFileInfo);
-                await ctx.Response.StartAsync();
+                await ctx.Response.SendFileAsync(fileName);
                 return;
+            }
+
+            _logger.LogInformation("File not found in cache for {Name}", fileName);
+            var proxyFeature = ctx.Features.Get<IReverseProxyFeature>();
+            
+            if (proxyFeature is null)
+            {
+                _logger.LogWarning("Proxy feature not found");
+                ctx.Response.StatusCode = 404;
+            }
+            else
+            {
+                _logger.LogDebug("Proxy feature found, creating a wrapped stream for {Name}", fileName);
+
+                var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
+                var pacmanCacheBody = new PacmanPackageStream(originalBody);
+                ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
+
+                await next(ctx);
+
+                if (ctx.Response.HasStarted)
+                {
+                    _logger.LogInformation("Response has started for {Name}", fileName);
+                }
+                else
+                {
+                    _logger.LogWarning("Nothing found for {Name}", fileName);
+                    ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+                }
+
+                var packageFileInfo = pacmanCacheBody.PackageFileInfo();
+                
+                if(packageFileInfo is { Exists: true, Length: >1 } && packageFileInfo.Length == ctx.Response.ContentLength)
+                {
+                    await _persistentFileService.EnqueueRequest(new PackageCacheRequest
+                    {
+                        PackageName = fileName,
+                        PackageStream = packageFileInfo.OpenRead()
+                    });
+                    _logger.LogInformation("Copying {Name} to cache", fileName);
+                    
+                    packageFileInfo.CopyTo(Path.Combine(_cacheOptions.CacheDirectory, fileName), true);
+                    await using var fileStream = packageFileInfo.OpenRead();
+                    packageFileInfo.Delete();
+                    await fileStream.CopyToAsync(fileStream);
+                }
             }
         }
         else
         {
-            _logger.LogDebug("Skipping pacman cache middleware at {Path}", path);
+            _logger.LogDebug("Skipping pacman cache middleware at {Path}", ctx.Request.Path);
         }
-        await next(ctx);
         
         //if response still hasn't started then declare it as a 404
         // if (!ctx.Response.HasStarted)
@@ -279,5 +316,6 @@ public class PackageCacheMiddleware : IMiddleware
         //
         //
 
+        
     }
 }

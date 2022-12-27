@@ -1,3 +1,4 @@
+using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,27 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
     
 app.UseAuthorization();
+
+var mirrorPath = app.Configuration["MirrorPath"];
+if (mirrorPath is not null && Directory.Exists(mirrorPath))
+{
+    app.Logger.LogInformation("Serving files from {MirrorPath}", mirrorPath);
+    var fileServerOptions = new FileServerOptions
+    {
+        RequestPath = "/archlinux",
+        FileProvider = new PhysicalFileProvider(mirrorPath),
+        RedirectToAppendTrailingSlash = false,
+        EnableDirectoryBrowsing = true,
+        EnableDefaultFiles = false,
+        StaticFileOptions =
+        {
+            DefaultContentType = "application/octet-stream",
+            ServeUnknownFileTypes = true
+        }
+    };
+
+    app.UseFileServer(fileServerOptions);
+}
 app.UsePacmanCache();
 app.MapReverseProxy(proxy =>
 {
