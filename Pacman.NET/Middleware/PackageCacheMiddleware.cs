@@ -12,18 +12,21 @@ public class PackageCacheMiddleware : IMiddleware
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly IPacmanService _pacmanService;
     private readonly PersistentFileService _persistentFileService;
+    private readonly IOptions<PackageCacheMiddlewareOptions> _middlewareOptions;
     private readonly IFileProvider _fileProvider;
 
 
     public PackageCacheMiddleware(ILogger<PackageCacheMiddleware> logger,
         IOptions<PacmanOptions> cacheOptions, 
         IPacmanService pacmanService,
-        PersistentFileService persistentFileService)
+        PersistentFileService persistentFileService,
+        IOptions<PackageCacheMiddlewareOptions> middlewareOptions)
     {
         _cacheOptions = cacheOptions.Value;
         _logger = logger;
         _pacmanService = pacmanService;
         _persistentFileService = persistentFileService;
+        _middlewareOptions = middlewareOptions;
         _fileProvider = new CompositeFileProvider(
             new PhysicalFileProvider(_cacheOptions.CacheDirectory),
             new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.CacheDirectory)),
@@ -152,14 +155,17 @@ public class PackageCacheMiddleware : IMiddleware
         if (ctx.Request.Path.StartsWithSegments(_cacheOptions.BaseAddress, out var pathString))
         {
             var fileName = Path.GetFileName(pathString);
-            var cachedFileInfo = _fileProvider.GetFileInfo(fileName);
+            var cachedFileInfo = _middlewareOptions.Value.FileProvider.GetFileInfo(pathString);
 
             if (cachedFileInfo.Exists)
             {
+                var fileInfo = new FileInfo(cachedFileInfo.PhysicalPath!);
+                var filePath = fileInfo.ResolveLinkTarget(true);
+                
                 ctx.Response.Clear();
                 ctx.Response.ContentType = "application/octet-stream";
                 _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.SendFileAsync(fileName);
+                await ctx.Response.SendFileAsync(filePath.FullName);
                 return;
             }
 
@@ -212,8 +218,14 @@ public class PackageCacheMiddleware : IMiddleware
         else
         {
             _logger.LogDebug("Skipping pacman cache middleware at {Path}", ctx.Request.Path);
+            await next(ctx);
         }
-        
+
+        if (!ctx.Response.HasStarted)
+        {
+            ctx.Response.StatusCode = 404;
+            await ctx.Response.StartAsync();
+        }
         //if response still hasn't started then declare it as a 404
         // if (!ctx.Response.HasStarted)
         // {
@@ -318,4 +330,9 @@ public class PackageCacheMiddleware : IMiddleware
 
         
     }
+}
+
+public record PackageCacheMiddlewareOptions
+{
+    public required IFileProvider FileProvider { get; set; }
 }
