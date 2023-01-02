@@ -30,6 +30,7 @@ public class PackageCacheMiddleware : IMiddleware
         _fileProvider = new CompositeFileProvider(
             new PhysicalFileProvider(_cacheOptions.CacheDirectory),
             new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.DbDirectory ?? _cacheOptions.CacheDirectory)),
+            new PhysicalFileProvider(_cacheOptions.DbDirectory!),
             new PhysicalFileProvider(_cacheOptions.SaveDirectory)
         );
     }
@@ -159,13 +160,10 @@ public class PackageCacheMiddleware : IMiddleware
 
             if (cachedFileInfo.Exists)
             {
-                var fileInfo = new FileInfo(cachedFileInfo.PhysicalPath!);
-                var filePath = fileInfo.ResolveLinkTarget(true);
-                
                 ctx.Response.Clear();
                 ctx.Response.ContentType = "application/octet-stream";
                 _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.SendFileAsync(filePath.FullName);
+                await ctx.Response.SendFileAsync(cachedFileInfo);
                 return;
             }
 
