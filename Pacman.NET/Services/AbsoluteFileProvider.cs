@@ -1,3 +1,8 @@
+using System.Collections;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.FileProviders.Physical;
+using Microsoft.Extensions.Primitives;
+
 namespace Pacman.NET.Services;
 
 public class AbsoluteProvider : IFileProvider
@@ -44,12 +49,11 @@ public class AbsoluteDirectoryContents : IDirectoryContents
         }
     }
 
+    public bool Exists => _directoryContents.Exists;
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
     }
-
-    public bool Exists => _directoryContents.Exists;
 }
 
 public class AbsoluteFileInfo : IFileInfo

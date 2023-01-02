@@ -26,7 +26,7 @@ public class PackageCacheMiddleware : IMiddleware
         _persistentFileService = persistentFileService;
         _fileProvider = new CompositeFileProvider(
             new PhysicalFileProvider(_cacheOptions.CacheDirectory),
-            new PhysicalFileProvider(_cacheOptions.DbDirectory!),
+            new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.CacheDirectory)),
             new PhysicalFileProvider(_cacheOptions.SaveDirectory)
         );
     }
