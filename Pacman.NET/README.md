@@ -21,6 +21,16 @@ Creating custom repos requires pacman with the signing key inititialized
 All packages must be signed with a key controlled by the server. The server repo key is signed by local pacman installation so packages are trusted. External users will need to import the key from /pub
 Home Dir:/etc/pacnet
 
+## Getting publish artifact
+
+```bash
+    cd ~/RiderProjects/Pacman.NET
+    docker build --no-cache -f Pacman.NET/Dockerfile -t give-tar ./
+    docker run -it -v ~/publish:/app/final/ give-tar
+    cd ~/publish
+    b2sums ./Pacman.NET.tar.gz
+```
+
 # Usage
 Hosting as a cache server is done by initializing systemctl service
 

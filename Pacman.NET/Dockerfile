@@ -12,9 +12,10 @@ WORKDIR "/src/Pacman.NET"
 RUN dotnet build "Pacman.NET.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "Pacman.NET.csproj" -c Release -o /app/publish
 
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Pacman.NET.dll"]
+RUN dotnet publish "Pacman.NET.csproj" -c Release -o /app/publish/Pacman.NET
+
+WORKDIR /app/publish/Pacman.NET
+RUN tar -czf Pacman.NET.tar.gz ./*
+
+CMD ["cp", "/app/publish/Pacman.NET/Pacman.NET.tar.gz", "/app/final/Pacman.NET.tar.gz"]
