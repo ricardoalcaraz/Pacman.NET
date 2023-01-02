@@ -158,6 +158,11 @@ public class PackageCacheMiddleware : IMiddleware
             var fileName = Path.GetFileName(pathString);
             var cachedFileInfo = _middlewareOptions.Value.FileProvider.GetFileInfo(pathString);
 
+            if (Path.GetExtension(pathString).EndsWith("db") || Path.GetExtension(pathString).EndsWith("sig"))
+            {
+                await next(ctx);
+                return;
+            }
             if (cachedFileInfo.Exists)
             {
                 ctx.Response.Clear();
