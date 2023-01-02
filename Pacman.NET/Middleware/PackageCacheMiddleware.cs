@@ -29,7 +29,7 @@ public class PackageCacheMiddleware : IMiddleware
         _middlewareOptions = middlewareOptions;
         _fileProvider = new CompositeFileProvider(
             new PhysicalFileProvider(_cacheOptions.CacheDirectory),
-            new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.CacheDirectory)),
+            new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.DbDirectory ?? _cacheOptions.CacheDirectory)),
             new PhysicalFileProvider(_cacheOptions.SaveDirectory)
         );
     }
