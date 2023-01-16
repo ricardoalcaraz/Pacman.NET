@@ -33,6 +33,7 @@
       <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
+      <PackageReference Include="System.Text.Json" Version="7.0.1" />
     </ItemGroup>
 
 </Project>

@@ -158,8 +158,9 @@ public class PackageCacheMiddleware : IMiddleware
             var fileName = Path.GetFileName(pathString);
             var cachedFileInfo = _middlewareOptions.Value.FileProvider.GetFileInfo(pathString);
 
-            if (Path.GetExtension(pathString).EndsWith("db") || Path.GetExtension(pathString).EndsWith("sig"))
+            if (Path.GetExtension(fileName) == ".db")
             {
+                _logger.LogInformation("Ignoring file {Name}", fileName);
                 await next(ctx);
                 return;
             }
