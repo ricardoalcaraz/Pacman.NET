@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Utilities;
 
@@ -38,6 +39,7 @@ builder.Services.AddOptions<RepositoryOptions>()
 
 var app = builder.Build();
 
+var options = app.Services.GetRequiredService<IOptions<RepositoryOptions>>().Value;
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -45,8 +47,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseRouting();
-    
-app.UseAuthorization();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = options.BaseAddress,
+    FileProvider = options.RepositoryProvider,
+    RedirectToAppendTrailingSlash = false,
+    DefaultContentType = "application/octet-stream",
+    ServeUnknownFileTypes = true,
+});
 
 app.MapReverseProxy(proxy =>
 {
