@@ -141,10 +141,20 @@ public class PackageCacheMiddleware : IMiddleware
             }
 
             var packageInfo = _cacheOptions.PackageProvider.GetFileInfo(fileName);
+            packageInfo = packageInfo.Exists ? packageInfo : _cacheOptions.RepositoryProvider.GetFileInfo(pathString);
             if (packageInfo.Exists)
             {
+                var file = new FileInfo(packageInfo.PhysicalPath!);
+                if (string.IsNullOrWhiteSpace(file.LinkTarget))
+                {
+                    await ctx.Response.SendFileAsync(packageInfo);
+                }
+                else
+                {
+                    var fileInfo = File.ResolveLinkTarget(file.LinkTarget, true) as FileInfo;
+                    await ctx.Response.SendFileAsync(new PhysicalFileInfo(fileInfo!));
+                }
                 ctx.Response.ContentType = "application/octet-stream";
-                await ctx.Response.SendFileAsync(packageInfo);
                 return;
             }
 
