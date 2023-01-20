@@ -30,8 +30,7 @@ public class CustomRepoService : BackgroundService
             if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
                 var repo = await Cli.Wrap("/usr/bin/repo-add")
-                    .WithArguments($"{customRepo.Name}.db.tar.gz")
-                    .WithArguments("./")
+                    .WithArguments($"{customRepo.Name}.db.tar.gz ./")
                     .WithWorkingDirectory(directoryInfo.FullName)
                     .ExecuteAsync(stoppingToken);
                 
