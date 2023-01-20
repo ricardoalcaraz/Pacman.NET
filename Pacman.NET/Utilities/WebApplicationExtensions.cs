@@ -16,7 +16,7 @@ public static class WebApplicationExtensions
         builder.Services.AddSingleton<IPacmanService, PacmanService>(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
-        builder.Services.AddHostedService<PaccacheBackgroundService>();
+        //builder.Services.AddHostedService<PaccacheBackgroundService>();
         builder.Services.AddHttpClient<MirrorClient>();
         builder.Services.AddSingleton<PacmanConfigParser>();
         
