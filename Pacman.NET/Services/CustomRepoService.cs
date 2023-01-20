@@ -20,7 +20,7 @@ public class CustomRepoService : BackgroundService
     }
     
     
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var options = _options.Value;
         foreach (var customRepo in options.RepositoryProvider.GetDirectoryContents(string.Empty))
@@ -29,16 +29,15 @@ public class CustomRepoService : BackgroundService
             
             if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
-                var repo = Cli.Wrap("/usr/bin/repo-add")
+                var repo = await Cli.Wrap("/usr/bin/repo-add")
                     .WithArguments($"{customRepo.Name}.db.tar.gz")
                     .WithArguments("./")
-                    .WithWorkingDirectory(directoryInfo.FullName);
+                    .WithWorkingDirectory(directoryInfo.FullName)
+                    .ExecuteAsync(stoppingToken);
                 
                 _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
             }
         }
-
-        return Task.CompletedTask;
         // foreach (var database in options.CustomRepos)
         // {
         //     var dbDirectoryInfo = Directory.CreateDirectory($"./{database.Name}", USER_ONLY);
