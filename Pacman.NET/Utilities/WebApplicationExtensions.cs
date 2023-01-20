@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Middleware;
 using Yarp.ReverseProxy.Model;
 
@@ -17,12 +16,14 @@ public static class WebApplicationExtensions
         builder.Services.AddSingleton<IPacmanService, PacmanService>(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
+        builder.Services.AddHostedService<PaccacheBackgroundService>();
         builder.Services.AddHttpClient<MirrorClient>();
         builder.Services.AddSingleton<PacmanConfigParser>();
-        builder.Services.AddScoped<PackageCacheMiddleware>();
+        
         var mirrorConfigSetting = builder.Configuration["Pacman:MirrorUrl"] ?? throw new InvalidOperationException("MirrorUrl is a required config setting");
         var mirrorUri = new Uri(mirrorConfigSetting, UriKind.Absolute);
-        if (mirrorUri.IsFile)
+        
+        if (File.Exists(mirrorUri.AbsoluteUri))
         {
             builder.Services.AddTransient<IMirrorService, MirrorListParseService>();
         }
@@ -42,12 +43,12 @@ public static class WebApplicationExtensions
                 if(builder.Environment.IsDevelopment())
                 {
                     var homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                    opt.SaveDirectory = Path.Combine(homeDirectory, ".cache", "pacnet");
+                    opt.CacheDirectory = Path.Combine(homeDirectory, ".cache", "pacnet");
                 }
             })
             .PostConfigure(opt =>
             {
-                Directory.CreateDirectory(opt.SaveDirectory);
+                Directory.CreateDirectory(opt.CacheDirectory);
             })
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -62,12 +63,10 @@ public static class WebApplicationExtensions
         return builder;
     }
     
-    public static WebApplication UsePacmanCache(this WebApplication app)
+    public static IReverseProxyApplicationBuilder UsePacmanCache(this IReverseProxyApplicationBuilder app)
     {
-        var pacmanOptions = app.Services.GetRequiredService<IOptions<PacmanOptions>>().Value;
+        var pacmanOptions = app.ApplicationServices.GetRequiredService<IOptions<PacmanOptions>>().Value;
 
-        
-        
         // app.UseFileServer(new FileServerOptions
         // {
         //     RequestPath = pacmanOptions.BaseAddress,
@@ -89,60 +88,7 @@ public static class WebApplicationExtensions
 
     public static IReverseProxyApplicationBuilder UsePackageCache(this IReverseProxyApplicationBuilder proxyBuilder)
     {
-        proxyBuilder.Use(async (ctx, next) =>
-        {
-            var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-            var pacmanCacheBody = new PacmanPackageStream(originalBody);            
-            ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
-            
-            var proxyFeature = ctx.GetReverseProxyFeature();
-            var logger = ctx.RequestServices.GetRequiredService<ILogger<IReverseProxyFeature>>();
-
-            try
-            {
-                await next(ctx);
-            
-            }
-            finally
-            {
-                ctx.Features.Set(originalBody);
-            }
-
-            var ifModifiedSince = ctx.Request.Headers.IfModifiedSince.LastOrDefault();
-            if (DateTime.TryParse(ifModifiedSince, out var dateTime))
-            {
-                logger.LogInformation("Modified since header : {Time}", dateTime.ToLocalTime());
-            }
-
-            logger.LogInformation("Proxied request code {Status}", ctx.Response.StatusCode);
-          
-            var errorFeature = ctx.GetForwarderErrorFeature();
-            var lengthBefore = ctx.Response.ContentLength;
-            logger.LogInformation("Started: {State}, Size: {Size2}", ctx.Response.HasStarted, lengthBefore);
-
-            if (ctx.Response is { HasStarted: true, StatusCode: 200 })
-            { 
-                logger.LogInformation("Response has started for {Name}", ctx.Request.Path);
-                var fileService = ctx.RequestServices.GetRequiredService<PersistentFileService>();
-                var cachedFile = pacmanCacheBody.GetTempFile();
-                
-                logger.LogInformation("Sending {File} to get saved", cachedFile.Name);
-                await fileService.EnqueueRequest(new PackageCacheRequest
-                {
-                    PackageName = Path.GetFileName(ctx.Request.Path),
-                    PackageStream = cachedFile
-                });
-                return;
-            }
-
-            await ctx.Response.StartAsync();
-            
-            if (errorFeature is not null && !ctx.Response.HasStarted)
-            {
-                ctx.Response.Clear();
-                ctx.Response.StatusCode = 500;
-            }
-        });
+        proxyBuilder.UseMiddleware<PackageCacheMiddleware>();
         return proxyBuilder;
     }
 }

@@ -7,29 +7,33 @@ namespace Pacman.NET.Options;
 public record PacmanOptions
 {
     [Required]
-    public required string BaseAddress { get; init; } = "archlinux";
+    public required string BaseAddress { get; set; } = "archlinux";
     
     [Required]
     [AbsoluteFilePath]
-    public required string CacheDirectory { get; init; }
+    public required string CacheDirectory { get; set; }
+}
+public record RepositoryOptions
+{
+    [Required]
+    public required string BaseAddress { get; set; } = "archlinux";
     
     [Required]
-    public string? DbDirectory { get; set; }
-    
+    [AbsoluteFilePath]
+    public required string RepoDirectory { get; set; }
     [Required]
-    public required string SaveDirectory { get; set; } 
+    [AbsoluteFilePath]
+    public required string PackageDirectory { get; set; }
+    public IFileProvider RepositoryProvider { get; set; }
+    public required IFileProvider PackageProvider { get; set; }
+
+    
 }
 
 public record ApplicationOptions
 {
-    public required string BaseAddress { get; set; }
-    public required bool CacheDb { get; set; }
-    public required bool CachePackages { get; init; }
-    public required bool VerifySignature { get; init; }
     public required string CustomRepoDir { get; set; }
-    public required string LogDirectory { get; init; }
     public required string MirrorUrl { get; init; }
-    public required int CacheRefreshInterval { get; init; }
     public IEnumerable<CustomRepo> CustomRepos { get; set; } = Enumerable.Empty<CustomRepo>();
 }
 

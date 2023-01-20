@@ -42,7 +42,7 @@ public class PersistentFileService : BackgroundService
                     }
                     
                     
-                    var filePath = Path.Combine(_pacmanOptions.Value.SaveDirectory, persistPackageRequest.PackageName);
+                    var filePath = Path.Combine(_pacmanOptions.Value.CacheDirectory, persistPackageRequest.PackageName);
                     try
                     {
                         await using var fileStream = new FileStream(filePath, new FileStreamOptions

@@ -16,6 +16,25 @@ builder.Services
     .AddSignalR()
     .AddMessagePackProtocol();
 
+builder.Services.AddOptions<RepositoryOptions>()
+    .BindConfiguration("Pacman")
+    .Configure(opt =>
+    {
+        opt.RepoDirectory = builder.Environment.IsDevelopment()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "Pacman.NET", "repos")
+            : builder.Configuration["Pacman:RepositoryDirectory"] ?? throw new InvalidOperationException();
+        
+        opt.PackageDirectory = builder.Environment.IsDevelopment() 
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "Pacman.NET", "cache")
+            : builder.Configuration["Pacman:CacheDirectory"] ?? throw new InvalidOperationException();
+        Directory.CreateDirectory(opt.RepoDirectory);
+        Directory.CreateDirectory(opt.PackageDirectory);
+
+        opt.RepositoryProvider = new PhysicalFileProvider(opt.RepoDirectory);
+        opt.PackageProvider = new PhysicalFileProvider(opt.PackageDirectory);
+
+
+    });
 
 var app = builder.Build();
 
@@ -29,34 +48,11 @@ app.UseRouting();
     
 app.UseAuthorization();
 
-var mirrorPath = app.Configuration["MirrorPath"];
-if (mirrorPath is not null && Directory.Exists(mirrorPath))
-{
-    app.Logger.LogInformation("Serving files from {MirrorPath}", mirrorPath);
-    var fileServerOptions = new FileServerOptions
-    {
-        RequestPath = "/archlinux",
-        FileProvider = new PhysicalFileProvider(mirrorPath),
-        RedirectToAppendTrailingSlash = false,
-        EnableDirectoryBrowsing = true,
-        EnableDefaultFiles = false,
-        StaticFileOptions =
-        {
-            DefaultContentType = "application/octet-stream",
-            ServeUnknownFileTypes = true
-        }
-    };
-
-    app.UseFileServer(fileServerOptions);
-}
-app.UsePacmanCache();
 app.MapReverseProxy(proxy =>
 {
     proxy.UseLoadBalancing();
     proxy.UsePassiveHealthChecks();
-    proxy.UsePackageCache();
+    proxy.UsePacmanCache();
 });
-
-app.MapControllers();
 
 app.Run();

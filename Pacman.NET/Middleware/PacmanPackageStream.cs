@@ -9,20 +9,20 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
 {
     private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
-    private readonly string _fileName = Path.GetTempFileName();
+    private readonly string _fileName;
     private readonly FileStream _fileStream;
     private readonly ILogger<PacmanPackageStream> _logger = NullLogger<PacmanPackageStream>.Instance;
 
-    public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature)
+    public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
     {
         _originalBodyFeature = originalBodyFeature;
-        _fileStream = new FileStream(_fileName, new FileStreamOptions
+        _fileName = fileName;
+        _fileStream = new FileStream(fileName, new FileStreamOptions
         {
             Access = FileAccess.Write,
-            BufferSize = 0,
             Mode = FileMode.Create,
             Options = FileOptions.SequentialScan,
-            Share = FileShare.Delete
+            Share = FileShare.None
         });
     }
 

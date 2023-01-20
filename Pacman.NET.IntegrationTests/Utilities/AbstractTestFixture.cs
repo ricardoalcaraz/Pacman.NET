@@ -31,8 +31,6 @@ public class CustomWebAppFactory : WebApplicationFactory<PacmanOptions>
             {
                 BaseAddress = "/archlinux",
                 CacheDirectory = $"{currentDir}/Content",
-                DbDirectory = $"{currentDir}/Db",
-                SaveDirectory = $"{currentDir}/Save",
             });
             s.AddSingleton<IOptions<PacmanOptions>>(options);
         });

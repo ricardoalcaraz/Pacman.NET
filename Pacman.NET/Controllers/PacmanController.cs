@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.FileProviders.Physical;
 
 namespace Pacman.NET.Controllers;
 
@@ -8,14 +10,17 @@ public class PacmanController : ControllerBase
 {
     private readonly ILogger<PacmanController> _logger;
     private readonly IWebHostEnvironment _env;
+    private readonly IOptions<RepositoryOptions> _options;
     private readonly IPacmanService _pacmanService;
     
     public PacmanController(IPacmanService pacmanService, 
         ILogger<PacmanController> logger,
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        IOptions<RepositoryOptions> options)
     {
         _logger = logger;
         _env = env;
+        _options = options;
         _pacmanService = pacmanService;
     }
 
@@ -43,15 +48,31 @@ public class PacmanController : ControllerBase
         });
     }
 
-    [HttpGet("/archlinux/{repo}/{file}")]
-    public ActionResult ServeFile(string repo, string file)
+    [HttpGet("/archlinux/{repo}/os/{arch}/{file}")]
+    public ActionResult ServeFile(string repo, string arch, string file)
     {
-        if (_pacmanService.TryGetFile(repo, file, out var fileStream))
+        var fileInfo = _options.Value.RepositoryProvider.GetFileInfo($"/{repo}/{file}");
+        if (fileInfo.Exists)
         {
-            _logger.LogDebug("Found {File} in {Repo}", repo, file);
-            return File(fileStream, "application/octet-stream");
-        }
+            _logger.LogInformation("Looking for {Repo}", repo);
+            try
+            {
+                var linkTarget = System.IO.File.ResolveLinkTarget(fileInfo.PhysicalPath!, true);
+                if (linkTarget is FileInfo linkFileInfo)
+                {
+                    fileInfo = new PhysicalFileInfo(linkFileInfo);
+                    _logger.LogInformation("Resolved link for {File} to {Path}", fileInfo.PhysicalPath, linkFileInfo.FullName);
+                }
 
+            }
+            catch (Exception e)
+            {
+                _logger.LogTrace("Not a linked file");
+            }
+            
+            return File(fileInfo.PhysicalPath!, "application/octet-stream");
+        }
+        
         return NotFound();
     }
 }

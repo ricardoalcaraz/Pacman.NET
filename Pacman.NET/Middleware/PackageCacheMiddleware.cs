@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.FileProviders.Physical;
 using Yarp.ReverseProxy.Model;
 
 namespace Pacman.NET.Middleware;
@@ -7,32 +8,18 @@ namespace Pacman.NET.Middleware;
 
 public class PackageCacheMiddleware : IMiddleware
 {
-    private static readonly string[] _excludedFileTypes = { ".db", ".sig", ".files"};
-    private readonly PacmanOptions _cacheOptions;
+    private readonly RepositoryOptions _cacheOptions;
     private readonly ILogger<PackageCacheMiddleware> _logger;
-    private readonly IPacmanService _pacmanService;
-    private readonly PersistentFileService _persistentFileService;
-    private readonly IOptions<PackageCacheMiddlewareOptions> _middlewareOptions;
-    private readonly IFileProvider _fileProvider;
+    private readonly IWebHostEnvironment _env;
 
 
     public PackageCacheMiddleware(ILogger<PackageCacheMiddleware> logger,
-        IOptions<PacmanOptions> cacheOptions, 
-        IPacmanService pacmanService,
-        PersistentFileService persistentFileService,
-        IOptions<PackageCacheMiddlewareOptions> middlewareOptions)
+        IOptions<RepositoryOptions> cacheOptions, 
+        IWebHostEnvironment env)
     {
         _cacheOptions = cacheOptions.Value;
         _logger = logger;
-        _pacmanService = pacmanService;
-        _persistentFileService = persistentFileService;
-        _middlewareOptions = middlewareOptions;
-        _fileProvider = new CompositeFileProvider(
-            new PhysicalFileProvider(_cacheOptions.CacheDirectory),
-            new AbsoluteProvider(new PhysicalFileProvider(_cacheOptions.DbDirectory ?? _cacheOptions.CacheDirectory)),
-            new PhysicalFileProvider(_cacheOptions.DbDirectory!),
-            new PhysicalFileProvider(_cacheOptions.SaveDirectory)
-        );
+        _env = env;
     }
 
     //
@@ -117,17 +104,7 @@ public class PackageCacheMiddleware : IMiddleware
     //     _logger.LogTrace("Skipping pacman cache middleware");
     //     await _next(ctx);
     // }
-
-
-    private async Task SetHeaders(HttpContext ctx)
-    {
-        if (!ctx.Response.HasStarted)
-        {
-            ctx.Response.ContentType = "application/octet-stream";
-            await ctx.Response.StartAsync();
-        }
-    }
-
+    
     //
     // public async Task GetRateLimiterAsync(HttpContext context)
     // {
@@ -156,187 +133,190 @@ public class PackageCacheMiddleware : IMiddleware
         if (ctx.Request.Path.StartsWithSegments(_cacheOptions.BaseAddress, out var pathString))
         {
             var fileName = Path.GetFileName(pathString);
-            var cachedFileInfo = _middlewareOptions.Value.FileProvider.GetFileInfo(pathString);
-
-            if (Path.GetExtension(fileName) == ".db")
+            if (string.IsNullOrWhiteSpace(fileName))
             {
-                _logger.LogInformation("Ignoring file {Name}", fileName);
-                await next(ctx);
+                _logger.LogInformation("No package name given");
+                ctx.Response.StatusCode = 404;
                 return;
             }
-            if (cachedFileInfo.Exists)
+
+            var packageInfo = _cacheOptions.PackageProvider.GetFileInfo(fileName);
+            if (packageInfo.Exists)
             {
-                ctx.Response.Clear();
                 ctx.Response.ContentType = "application/octet-stream";
-                _logger.LogInformation("Found cached file for {Name}", fileName);
-                await ctx.Response.SendFileAsync(cachedFileInfo);
+                await ctx.Response.SendFileAsync(packageInfo);
                 return;
             }
 
             _logger.LogInformation("File not found in cache for {Name}", fileName);
             var proxyFeature = ctx.Features.Get<IReverseProxyFeature>();
-            
+
             if (proxyFeature is null)
             {
                 _logger.LogWarning("Proxy feature not found");
                 ctx.Response.StatusCode = 404;
+                ctx.Response.Clear();
+                await ctx.Response.CompleteAsync();
+                return;
             }
-            else
+
+            _logger.LogDebug("Proxy feature found, creating a wrapped stream for {Name}", fileName);
+
+            var tempFileName = Path.GetTempFileName();
+
+            try
             {
-                _logger.LogDebug("Proxy feature found, creating a wrapped stream for {Name}", fileName);
-
                 var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                var pacmanCacheBody = new PacmanPackageStream(originalBody);
-                ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
-
-                await next(ctx);
-
-                if (ctx.Response.HasStarted)
+                await using (var pacmanCacheBody = new PacmanPackageStream(originalBody, tempFileName))
                 {
-                    _logger.LogInformation("Response has started for {Name}", fileName);
-                }
-                else
-                {
-                    _logger.LogWarning("Nothing found for {Name}", fileName);
-                    ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+                    ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
+                    await next(ctx);
+                    ctx.Features.Set(originalBody);
+
+                    await ctx.Response.CompleteAsync();
                 }
 
-                var packageFileInfo = pacmanCacheBody.PackageFileInfo();
-                
-                if(packageFileInfo is { Exists: true, Length: >1 } && packageFileInfo.Length == ctx.Response.ContentLength)
+                if (ctx.Response.StatusCode == 200)
                 {
-                    await _persistentFileService.EnqueueRequest(new PackageCacheRequest
+                    var tmpFileInfo = new FileInfo(tempFileName);
+                    if (tmpFileInfo.Exists)
                     {
-                        PackageName = fileName,
-                        PackageStream = packageFileInfo.OpenRead()
-                    });
-                    _logger.LogInformation("Copying {Name} to cache", fileName);
-                    
-                    packageFileInfo.CopyTo(Path.Combine(_cacheOptions.CacheDirectory, fileName), true);
-                    await using var fileStream = packageFileInfo.OpenRead();
-                    packageFileInfo.Delete();
-                    await fileStream.CopyToAsync(fileStream);
+                        if (tmpFileInfo.Length == ctx.Response.ContentLength && Path.GetExtension(pathString) != "db")
+                        {
+                            File.Copy(tempFileName, Path.Combine(_cacheOptions.PackageDirectory, Path.GetFileName(pathString)));
+                        }
+                    }
                 }
             }
-        }
-        else
-        {
-            _logger.LogDebug("Skipping pacman cache middleware at {Path}", ctx.Request.Path);
-            await next(ctx);
+            finally
+            {
+                File.Delete(tempFileName);
+
+            }
+
+            //if response still hasn't started then declare it as a 404
+            // if (!ctx.Response.HasStarted)
+            // {
+            //     _logger.LogDebug("No file found for {Name}", path);
+            //     ctx.Response.Clear();
+            //     ctx.Response.StatusCode = 404;
+            //     await ctx.Response.CompleteAsync();
+            // }
+            // //it is important that no execute permission should ever be given to new files
+            // const UnixFileMode GLOBAL_READ = UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+            // const UnixFileMode FILE_PERM = GLOBAL_READ | UnixFileMode.UserWrite;
+            //
+            // _logger.LogDebug("{Name} has {Perm} permissions", fileInfo.Name, fileInfo.UnixFileMode);
+            //
+            // //set file permissions as a precaution to ensure no executable files are being used as a cache
+            // fileInfo.UnixFileMode = FILE_PERM;
+            // var name = Path.GetTempFileName();
+            //
+            // if (fileInfo.Exists)
+            // {
+            //     try
+            //     {
+            //         
+            //     
+            //
+            //         //after file is down downloading create background process to save tmp file to disk
+            //         
+            //         //reset stream to beginning
+            //     }
+            //     catch (IOException)
+            //     {
+            //
+            //     }
+            //     catch(UnauthorizedAccessException)
+            //     {
+            //
+            //     }
+            // }
+            // var tmpFileStreamOptions = new FileStreamOptions
+            // {
+            //     BufferSize = 4096,
+            //     Access = FileAccess.ReadWrite,
+            //     Mode = FileMode.Create,
+            //     Options = FileOptions.SequentialScan,
+            //     PreallocationSize = 4096,
+            //     Share = FileShare.None,
+            //     UnixCreateMode = FILE_PERM
+            // };
+            // var tmpFileStream = new FileStream(name, tmpFileStreamOptions);
+            //
+            // try
+            // {
+            //     var fileSte = new FileStream(name, FileMode.Create, FileAccess.Read, FileShare.Read);
+            //     await using var fileStream = File.OpenWrite(name);
+            //     //move package body to ctor
+            //     //wrap body stream in a rate limiter
+            //     await next(ctx);
+            //     
+            //     //file cleanup
+            //     
+            // }
+            // catch (IOException ex)
+            // {
+            //     _logger.LogWarning("Permission denied to write {File} to {Path}", name, _cacheOptions.SaveDirectory);
+            // }
+            //
+            // await next(ctx);
+            //
+            // await ctx.Response.StartAsync();
+            //
+            // var packageSize = ctx.Response.ContentLength ?? 0;
+            // _logger.LogInformation("File Size of {Name} is {Size}", fileName, packageSize);
+            //
+            // //TODO: catch exceptions when completing
+            // await ctx.Response.CompleteAsync();
+            //
+            // tmpFileStream.Position = tmpFileStream.Seek(0, SeekOrigin.Begin);
+            //
+            // if (tmpFileStream.Position == packageSize)
+            // {
+            //     _logger.LogInformation("File {Name} has been downloaded", fileInfo.Name);
+            //     
+            //     
+            //     try
+            //     {
+            //         //move tmp file to cache directory
+            //         await _persistentFileService.EnqueueRequest(new PackageCacheRequest
+            //         {
+            //             PackageStream = tmpFileStream,
+            //             PackageName = fileInfo.Name
+            //         });
+            //         _logger.LogDebug("Successfully enqueued {Name} for cache persistence", fileInfo.Name);
+            //     }
+            //     catch (Exception ex)
+            //     {
+            //         _logger.LogError(ex, "Error occured while trying to persist {Name}", fileName);
+            //         await tmpFileStream.DisposeAsync();
+            //     }
+            // }
+            //
+            //
         }
 
-        if (!ctx.Response.HasStarted)
-        {
-            ctx.Response.StatusCode = 404;
-            await ctx.Response.StartAsync();
-        }
-        //if response still hasn't started then declare it as a 404
-        // if (!ctx.Response.HasStarted)
-        // {
-        //     _logger.LogDebug("No file found for {Name}", path);
-        //     ctx.Response.Clear();
-        //     ctx.Response.StatusCode = 404;
-        //     await ctx.Response.CompleteAsync();
-        // }
-        // //it is important that no execute permission should ever be given to new files
-        // const UnixFileMode GLOBAL_READ = UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
-        // const UnixFileMode FILE_PERM = GLOBAL_READ | UnixFileMode.UserWrite;
-        //
-        // _logger.LogDebug("{Name} has {Perm} permissions", fileInfo.Name, fileInfo.UnixFileMode);
-        //
-        // //set file permissions as a precaution to ensure no executable files are being used as a cache
-        // fileInfo.UnixFileMode = FILE_PERM;
-        // var name = Path.GetTempFileName();
-        //
-        // if (fileInfo.Exists)
-        // {
-        //     try
-        //     {
-        //         
-        //     
-        //
-        //         //after file is down downloading create background process to save tmp file to disk
-        //         
-        //         //reset stream to beginning
-        //     }
-        //     catch (IOException)
-        //     {
-        //
-        //     }
-        //     catch(UnauthorizedAccessException)
-        //     {
-        //
-        //     }
-        // }
-        // var tmpFileStreamOptions = new FileStreamOptions
-        // {
-        //     BufferSize = 4096,
-        //     Access = FileAccess.ReadWrite,
-        //     Mode = FileMode.Create,
-        //     Options = FileOptions.SequentialScan,
-        //     PreallocationSize = 4096,
-        //     Share = FileShare.None,
-        //     UnixCreateMode = FILE_PERM
-        // };
-        // var tmpFileStream = new FileStream(name, tmpFileStreamOptions);
-        //
-        // try
-        // {
-        //     var fileSte = new FileStream(name, FileMode.Create, FileAccess.Read, FileShare.Read);
-        //     await using var fileStream = File.OpenWrite(name);
-        //     //move package body to ctor
-        //     //wrap body stream in a rate limiter
-        //     await next(ctx);
-        //     
-        //     //file cleanup
-        //     
-        // }
-        // catch (IOException ex)
-        // {
-        //     _logger.LogWarning("Permission denied to write {File} to {Path}", name, _cacheOptions.SaveDirectory);
-        // }
-        //
-        // await next(ctx);
-        //
-        // await ctx.Response.StartAsync();
-        //
-        // var packageSize = ctx.Response.ContentLength ?? 0;
-        // _logger.LogInformation("File Size of {Name} is {Size}", fileName, packageSize);
-        //
-        // //TODO: catch exceptions when completing
-        // await ctx.Response.CompleteAsync();
-        //
-        // tmpFileStream.Position = tmpFileStream.Seek(0, SeekOrigin.Begin);
-        //
-        // if (tmpFileStream.Position == packageSize)
-        // {
-        //     _logger.LogInformation("File {Name} has been downloaded", fileInfo.Name);
-        //     
-        //     
-        //     try
-        //     {
-        //         //move tmp file to cache directory
-        //         await _persistentFileService.EnqueueRequest(new PackageCacheRequest
-        //         {
-        //             PackageStream = tmpFileStream,
-        //             PackageName = fileInfo.Name
-        //         });
-        //         _logger.LogDebug("Successfully enqueued {Name} for cache persistence", fileInfo.Name);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError(ex, "Error occured while trying to persist {Name}", fileName);
-        //         await tmpFileStream.DisposeAsync();
-        //     }
-        // }
-        //
-        //
+    }
+    
+    private IFileProvider CreateFileProvider(string name)
+    {
+        var fileProviderPath = _env.IsDevelopment()
+            ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            : _env.ContentRootPath;
 
-        
+        var directoryInfo = Directory.CreateDirectory(Path.Combine(fileProviderPath, name));
+        if (directoryInfo.Exists)
+        {
+            _logger.LogInformation("Found directory {Name}", directoryInfo);
+        }
+
+        return new PhysicalFileProvider(directoryInfo.FullName);
     }
 }
 
 public record PackageCacheMiddlewareOptions
 {
-    public required IFileProvider FileProvider { get; set; }
+    public required IFileProvider PackageProvider { get; set; }
+    public required IFileProvider RepositoryProvider { get; set; }
 }
