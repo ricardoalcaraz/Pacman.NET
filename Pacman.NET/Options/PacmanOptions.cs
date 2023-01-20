@@ -10,7 +10,6 @@ public record PacmanOptions
     public required string BaseAddress { get; set; } = "archlinux";
     
     [Required]
-    [AbsoluteFilePath]
     public required string CacheDirectory { get; set; }
     
     [Required]
@@ -23,10 +22,8 @@ public record RepositoryOptions
     public required string BaseAddress { get; set; } = "archlinux";
     
     [Required]
-    [AbsoluteFilePath]
     public required string RepoDirectory { get; set; }
     [Required]
-    [AbsoluteFilePath]
     public required string PackageDirectory { get; set; }
     public IFileProvider RepositoryProvider { get; set; }
     public required IFileProvider PackageProvider { get; set; }
