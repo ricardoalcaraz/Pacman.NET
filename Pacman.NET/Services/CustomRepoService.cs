@@ -1,17 +1,18 @@
+using CliWrap;
 using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
 
 public class CustomRepoService : BackgroundService
 {
-    private readonly IOptions<ApplicationOptions> _options;
+    private readonly IOptions<RepositoryOptions> _options;
     private readonly ILogger<CustomRepoService> _logger;
     private readonly IWebHostEnvironment _env;
     private readonly Dictionary<string, PhysicalFileProvider> _fileProviders = new();
 
     private const UnixFileMode USER_ONLY = UnixFileMode.UserExecute | UnixFileMode.UserExecute | UnixFileMode.UserExecute;
     
-    public CustomRepoService(IOptions<ApplicationOptions> options, ILogger<CustomRepoService> logger, IWebHostEnvironment env)
+    public CustomRepoService(IOptions<RepositoryOptions> options, ILogger<CustomRepoService> logger, IWebHostEnvironment env)
     {
         _options = options;
         _logger = logger;
@@ -22,12 +23,17 @@ public class CustomRepoService : BackgroundService
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var options = _options.Value;
-        foreach (var customRepo in options.CustomRepos)
+        foreach (var customRepo in options.RepositoryProvider.GetDirectoryContents(string.Empty))
         {
-            var directoryInfo = Directory.CreateDirectory(Path.Combine(_env.ContentRootPath, customRepo.Name));
-            if (directoryInfo.Exists)
+            var directoryInfo = Directory.CreateDirectory(Path.Combine(customRepo.PhysicalPath!, "os", "x86_64"));
+            
+            if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
-                _fileProviders.Add(customRepo.Name, new PhysicalFileProvider(directoryInfo.FullName));
+                var repo = Cli.Wrap("/usr/bin/repo-add")
+                    .WithArguments($"{customRepo.Name}.db.tar.gz")
+                    .WithArguments("./")
+                    .WithWorkingDirectory(directoryInfo.FullName);
+                
                 _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
             }
         }

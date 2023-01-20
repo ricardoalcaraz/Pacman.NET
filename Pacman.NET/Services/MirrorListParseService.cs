@@ -6,12 +6,12 @@ public class MirrorListParseService : IMirrorService
 {
     private readonly PacmanConfigParser _configParser;
     private readonly ILogger<MirrorListParseService> _logger;
-    private readonly IOptions<ApplicationOptions> _options;
+    private readonly IOptions<PacmanOptions> _options;
     private readonly MirrorClient _mirrorClient;
 
     public MirrorListParseService(PacmanConfigParser configParser, 
         ILogger<MirrorListParseService> logger, 
-        IOptions<ApplicationOptions> options, 
+        IOptions<PacmanOptions> options, 
         MirrorClient mirrorClient)
     {
         _configParser = configParser;

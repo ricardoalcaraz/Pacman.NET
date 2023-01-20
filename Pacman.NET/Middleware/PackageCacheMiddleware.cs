@@ -172,7 +172,7 @@ public class PackageCacheMiddleware : IMiddleware
                     ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
                     await next(ctx);
                     ctx.Features.Set(originalBody);
-
+                    
                     await ctx.Response.CompleteAsync();
                 }
 

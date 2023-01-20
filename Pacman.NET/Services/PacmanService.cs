@@ -17,7 +17,7 @@ public class PacmanService : BackgroundService, IPacmanService
 {
     private const string REPO_ADD_BIN = "/usr/bin/repo-add";
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IOptions<ApplicationOptions> _options;
+    private readonly IOptions<PacmanOptions> _options;
     private readonly ILogger<PacmanService> _logger;
     private readonly Process _repoAddProcess = new();
     private readonly ConcurrentDictionary<string, FileInfo> packageLock = new();
@@ -26,7 +26,7 @@ public class PacmanService : BackgroundService, IPacmanService
     private readonly Dictionary<string, PhysicalFileProvider> _fileProviders = new();
 
 
-    public PacmanService(IOptions<ApplicationOptions> options, ILogger<PacmanService> logger, IHttpClientFactory httpClientFactory, IWebHostEnvironment env)
+    public PacmanService(IOptions<PacmanOptions> options, ILogger<PacmanService> logger, IHttpClientFactory httpClientFactory, IWebHostEnvironment env)
     {
         _options = options;
         _logger = logger;
@@ -47,15 +47,6 @@ public class PacmanService : BackgroundService, IPacmanService
         }
         
         var options = _options.Value;
-        var customRepoDirInfo = Directory.CreateDirectory(options.CustomRepoDir);
-        ;
-        
-        foreach (var customRepo in customRepoDirInfo.GetDirectories())
-        {
-            var repoName = customRepo.Name;
-            _fileProviders.Add(repoName, new PhysicalFileProvider(customRepo.FullName));
-            _logger.LogInformation("Found custom repo {Name}", repoName);
-        }
     }
 
     public async Task<bool> TestDependencies(CancellationToken ctx = default)

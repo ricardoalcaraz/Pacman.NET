@@ -12,6 +12,10 @@ public record PacmanOptions
     [Required]
     [AbsoluteFilePath]
     public required string CacheDirectory { get; set; }
+    
+    [Required]
+    public required string MirrorUrl { get; set; }
+    
 }
 public record RepositoryOptions
 {
@@ -33,7 +37,6 @@ public record RepositoryOptions
 public record ApplicationOptions
 {
     public required string CustomRepoDir { get; set; }
-    public required string MirrorUrl { get; init; }
     public IEnumerable<CustomRepo> CustomRepos { get; set; } = Enumerable.Empty<CustomRepo>();
 }
 
