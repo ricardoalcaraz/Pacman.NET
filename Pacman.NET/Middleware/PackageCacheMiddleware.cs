@@ -177,15 +177,14 @@ public class PackageCacheMiddleware : IMiddleware
             try
             {
                 var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                await using (var pacmanCacheBody = new PacmanPackageStream(originalBody, tempFileName))
-                {
-                    ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
-                    await next(ctx);
-                    ctx.Features.Set(originalBody);
-                    
-                    await ctx.Response.CompleteAsync();
-                }
-
+                await using var pacmanCacheBody = new PacmanPackageStream(originalBody, tempFileName);
+                ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
+                await next(ctx);
+                ctx.Features.Set(originalBody);
+                await ctx.Response.CompleteAsync();
+            }
+            finally
+            {
                 if (ctx.Response.StatusCode == 200)
                 {
                     var tmpFileInfo = new FileInfo(tempFileName);
@@ -197,11 +196,6 @@ public class PackageCacheMiddleware : IMiddleware
                         }
                     }
                 }
-            }
-            finally
-            {
-                File.Delete(tempFileName);
-
             }
 
             //if response still hasn't started then declare it as a 404
