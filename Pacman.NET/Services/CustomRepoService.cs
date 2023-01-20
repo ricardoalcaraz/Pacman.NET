@@ -1,3 +1,4 @@
+using System.Text;
 using CliWrap;
 using Microsoft.Extensions.FileProviders;
 
@@ -29,11 +30,16 @@ public class CustomRepoService : BackgroundService
             
             if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
+                var stringBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
                 var repo = await Cli.Wrap("/usr/bin/repo-add")
                     .WithArguments($"{customRepo.Name}.db.tar.gz")
                     .WithWorkingDirectory(directoryInfo.FullName)
+                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stringBuilder))
+                    .WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorBuilder))
                     .ExecuteAsync(stoppingToken);
-                
+                _logger.LogInformation("{Out}", stringBuilder.ToString());
+                _logger.LogInformation("{Error}", errorBuilder.ToString());
                 _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
             }
         }
