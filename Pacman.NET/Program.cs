@@ -27,8 +27,8 @@ builder.Services.AddOptions<RepositoryOptions>()
         opt.PackageDirectory = builder.Environment.IsDevelopment() 
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "Pacman.NET", "cache")
             : builder.Configuration["Pacman:CacheDirectory"] ?? throw new InvalidOperationException();
-        Directory.CreateDirectory(opt.RepoDirectory);
-        Directory.CreateDirectory(opt.PackageDirectory);
+        opt.RepoDirectory = Directory.CreateDirectory(opt.RepoDirectory).FullName;
+        opt.PackageDirectory = Directory.CreateDirectory(opt.PackageDirectory).FullName;
 
         opt.RepositoryProvider = new PhysicalFileProvider(opt.RepoDirectory);
         opt.PackageProvider = new PhysicalFileProvider(opt.PackageDirectory);
