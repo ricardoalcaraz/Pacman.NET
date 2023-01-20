@@ -40,7 +40,7 @@ public class CustomRepoService : BackgroundService
                     .ExecuteAsync(stoppingToken);
                 _logger.LogInformation("{Out}", stringBuilder.ToString());
                 _logger.LogInformation("{Error}", errorBuilder.ToString());
-                _logger.LogInformation("Created directory for custom repo {Name}", customRepo);
+                _logger.LogInformation("Created directory for custom repo {Name}", customRepo.PhysicalPath);
             }
         }
         // foreach (var database in options.CustomRepos)
