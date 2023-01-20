@@ -10,7 +10,7 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 # systemd will run this executable to start the service
 # if /usr/bin/dotnet doesn't work, use `which dotnet` to find correct dotnet executable path
-ExecStart=/usr/bin/dotnet /opt/Pacman.NET/Pacman.NET.dll
+ExecStart=/usr/bin/dotnet /srv/http/Pacman.NET/Pacman.NET.dll
 
 # to query logs using journalctl, set a logical name here
 SyslogIdentifier=Pacman.NET
@@ -20,7 +20,7 @@ SyslogIdentifier=Pacman.NET
 # To update permissions, use 'chown yourusername -R /srv/HelloWorld' to take ownership of the folder and files,
 #       Use 'chmod +x /srv/HelloWorld/HelloWorld' to allow execution of the executable file
 User=pacnet
-Group=pacnet
+Group=http
 
 # This environment variable is necessary when dotnet isn't loaded for the specified user.
 # To figure out this value, run 'env | grep DOTNET_ROOT' when dotnet has been loaded into your shell.
