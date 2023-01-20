@@ -11,8 +11,8 @@ public static class WebApplicationExtensions
         builder.Services.AddScoped<PackageCacheMiddleware>();
         builder.Services.AddSingleton<MirrorSyncService>();
         builder.Services.AddSingleton<PacmanService>();
-        builder.Services.AddSingleton<PersistentFileService>();
-        builder.Services.AddHostedService(sp => sp.GetRequiredService<PersistentFileService>());
+        //builder.Services.AddSingleton<PersistentFileService>();
+        //builder.Services.AddHostedService(sp => sp.GetRequiredService<PersistentFileService>());
         builder.Services.AddSingleton<IPacmanService, PacmanService>(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService(sp => sp.GetRequiredService<PacmanService>());
         builder.Services.AddHostedService<MirrorSyncService>(sp => sp.GetRequiredService<MirrorSyncService>());
