@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddIniFile("pacman.conf", true, true);
 
 builder.AddPacmanServer();
 
@@ -39,6 +39,15 @@ builder.Services.AddOptions<RepositoryOptions>()
 
 var app = builder.Build();
 
+var cacheDir = new DirectoryInfo(app.Configuration["Options:CacheDir"] ?? string.Empty);
+if (cacheDir.Exists)
+{
+    app.Logger.LogInformation("CacheDir exists at {Path}", cacheDir);
+}
+else
+{
+    app.Logger.LogWarning("CacheDir not specified");
+}
 var options = app.Services.GetRequiredService<IOptions<RepositoryOptions>>().Value;
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

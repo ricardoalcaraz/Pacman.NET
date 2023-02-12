@@ -31,6 +31,7 @@ public class CustomWebAppFactory : WebApplicationFactory<PacmanOptions>
             {
                 BaseAddress = "/archlinux",
                 CacheDirectory = $"{currentDir}/Content",
+                MirrorUrl = ""
             });
             s.AddSingleton<IOptions<PacmanOptions>>(options);
         });

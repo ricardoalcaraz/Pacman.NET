@@ -177,7 +177,7 @@ public class PackageCacheMiddleware : IMiddleware
             try
             {
                 var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                await using var pacmanCacheBody = new PacmanPackageStream(originalBody, tempFileName);
+                await using var pacmanCacheBody = new DownloadStream(originalBody, tempFileName);
                 ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
                 await next(ctx);
                 ctx.Features.Set(originalBody);

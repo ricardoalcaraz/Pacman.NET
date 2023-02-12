@@ -14,6 +14,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Client.Blazor", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Cli.SecureManagement", "Pacman.NET.Cli.SecureManagement\Pacman.NET.Cli.SecureManagement.csproj", "{158F723C-5CEF-4439-A4F1-C28237586A4E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.ConfigurationProvider", "Pacman.NET.ConfigurationProvider\Pacman.NET.ConfigurationProvider.csproj", "{46602224-7784-4AA2-8B29-7919563FE87D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.ConfigurationProvider.Tests", "Pacman.NET.ConfigurationProvider.Tests\Pacman.NET.ConfigurationProvider.Tests.csproj", "{392AF6D7-9B11-4433-972F-67611EFE827F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.AbsoluteFileProviderTests", "Pacman.NET.AbsoluteFileProviderTests\Pacman.NET.AbsoluteFileProviderTests.csproj", "{ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.AbsoluteFileProvider", "Pacman.NET.AbsoluteFileProvider\Pacman.NET.AbsoluteFileProvider.csproj", "{A19F8993-D9EF-46C8-9C72-680B0F511166}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +56,21 @@ Global
 		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{158F723C-5CEF-4439-A4F1-C28237586A4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46602224-7784-4AA2-8B29-7919563FE87D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46602224-7784-4AA2-8B29-7919563FE87D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46602224-7784-4AA2-8B29-7919563FE87D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46602224-7784-4AA2-8B29-7919563FE87D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{392AF6D7-9B11-4433-972F-67611EFE827F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{392AF6D7-9B11-4433-972F-67611EFE827F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{392AF6D7-9B11-4433-972F-67611EFE827F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{392AF6D7-9B11-4433-972F-67611EFE827F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A19F8993-D9EF-46C8-9C72-680B0F511166}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A19F8993-D9EF-46C8-9C72-680B0F511166}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A19F8993-D9EF-46C8-9C72-680B0F511166}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A19F8993-D9EF-46C8-9C72-680B0F511166}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

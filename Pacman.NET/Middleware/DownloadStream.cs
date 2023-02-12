@@ -1,19 +1,18 @@
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Middleware;
 
-public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
+public class DownloadStream : Stream, IHttpResponseBodyFeature
 {
     private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
     private readonly string _fileName;
     private readonly FileStream _fileStream;
-    private readonly ILogger<PacmanPackageStream> _logger = NullLogger<PacmanPackageStream>.Instance;
+    private readonly ILogger<DownloadStream> _logger;
 
-    public PacmanPackageStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
+    public DownloadStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
     {
         _originalBodyFeature = originalBodyFeature;
         _fileName = fileName;
@@ -24,6 +23,7 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
             Options = FileOptions.SequentialScan,
             Share = FileShare.None
         });
+        _logger ??= NullLogger<DownloadStream>.Instance;
     }
 
 
@@ -128,8 +128,4 @@ public class PacmanPackageStream : Stream, IHttpResponseBodyFeature
         base.Dispose(disposing);
     }
 
-    public FileStream GetTempFile()
-    {
-        return File.Open(_fileName, FileMode.Open, FileAccess.Read, FileShare.Delete);
-    }
 }
