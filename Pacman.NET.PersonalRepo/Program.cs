@@ -29,6 +29,11 @@ app.UseFileServer(new FileServerOptions
     FileProvider = new AbsoluteProvider("/data/archlinux/mirror"),
     RedirectToAppendTrailingSlash = true,
     EnableDirectoryBrowsing = true,
-    EnableDefaultFiles = false
+    EnableDefaultFiles = false,
+    StaticFileOptions =
+    {
+        DefaultContentType = "application/octet-stream", 
+        ServeUnknownFileTypes = true
+    }
 });
 app.Run();
