@@ -18,7 +18,7 @@ public class AbsoluteProvider : IFileProvider
 
     public IDirectoryContents GetDirectoryContents(string subpath)
     {
-        return _fileProvider.GetDirectoryContents(subpath);
+        return new AbsoluteDirectoryContents(_fileProvider.GetDirectoryContents(subpath));
     }
 
     public IFileInfo GetFileInfo(string subpath)
