@@ -31,4 +31,4 @@ jobs:
     - name: Add Nuget Source
       run: dotnet nuget add source --username ricardoalcaraz --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/ricardoalcaraz/index.json"
     - name: Upload Nuget
-      run: dotnet nuget push "Pacman.NET.AbsoluteFileProvider/bin/Release/OctocatApp.1.0.0.nupkg" --source "github"
+      run: dotnet nuget push "Pacman.NET.AbsoluteFileProvider/bin/Release/Pacman.NET.AbsoluteFileProvider.1.0.0.nupkg" --source "github"
