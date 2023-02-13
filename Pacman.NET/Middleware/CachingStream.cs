@@ -4,15 +4,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Middleware;
 
-public class DownloadStream : Stream, IHttpResponseBodyFeature
+public class CachingStream : Stream, IHttpResponseBodyFeature
 {
     private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
     private readonly string _fileName;
     private readonly FileStream _fileStream;
-    private readonly ILogger<DownloadStream> _logger;
-
-    public DownloadStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
+    public CachingStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
     {
         _originalBodyFeature = originalBodyFeature;
         _fileName = fileName;
@@ -23,14 +21,14 @@ public class DownloadStream : Stream, IHttpResponseBodyFeature
             Options = FileOptions.SequentialScan,
             Share = FileShare.None
         });
-        _logger ??= NullLogger<DownloadStream>.Instance;
     }
 
 
-    public void DisableBuffering()
-    {
-        _originalBodyFeature.DisableBuffering();
-    }
+    public Stream Stream => this;
+
+    public PipeWriter Writer => _pipeAdapter ??= PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
+    
+    public void DisableBuffering() => _originalBodyFeature.DisableBuffering();
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -38,34 +36,28 @@ public class DownloadStream : Stream, IHttpResponseBodyFeature
         await _originalBodyFeature.StartAsync(cancellationToken);
     }
 
-    public async Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = new CancellationToken())
+    
+    public Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = default)
     {
-        await _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
-    }
-    public string GetFileName()
-    {
-        return _fileName;
+        //check if the file can even be opened
+        return _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
     }
 
-    public FileInfo PackageFileInfo() => new(_fileName);
+
     public async Task CompleteAsync()
     {
         await _fileStream.FlushAsync();
         await _originalBodyFeature.CompleteAsync();
     }
-
-    public PipeWriter Writer => _pipeAdapter ??= PipeWriter.Create(Stream, new StreamPipeWriterOptions(leaveOpen: true));
-
+    
     public override void Flush()
     {
-        _logger.LogInformation("Flushing {FileName}", _fileStream.Name);
         _fileStream.Flush();
         _originalBodyFeature.Stream.Flush();
     }
 
     public override async Task FlushAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("FlushAsync {FileName}", _fileStream.Name);
         await _fileStream.FlushAsync(cancellationToken);
         await _originalBodyFeature.Stream.FlushAsync(cancellationToken);
     }
@@ -112,8 +104,6 @@ public class DownloadStream : Stream, IHttpResponseBodyFeature
         set { throw new NotSupportedException(); }
     }
 
-    public Stream Stream => this;
-
     public override async ValueTask DisposeAsync()
     {
         await _fileStream.DisposeAsync();
@@ -123,7 +113,7 @@ public class DownloadStream : Stream, IHttpResponseBodyFeature
 
     protected override void Dispose(bool disposing)
     {
-        _fileStream?.Dispose();
+        _fileStream.Dispose();
         _originalBodyFeature.Stream.Dispose();
         base.Dispose(disposing);
     }

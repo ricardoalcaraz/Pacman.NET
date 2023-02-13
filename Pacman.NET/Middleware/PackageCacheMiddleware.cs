@@ -176,10 +176,13 @@ public class PackageCacheMiddleware : IMiddleware
 
             try
             {
+                //response body is read only so we'll switch it so we can cache the body as it's getting streamed
                 var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                await using var pacmanCacheBody = new DownloadStream(originalBody, tempFileName);
-                ctx.Features.Set<IHttpResponseBodyFeature>(pacmanCacheBody);
+                await using var cachingStream = new CachingStream(originalBody, tempFileName);
+                ctx.Features.Set<IHttpResponseBodyFeature>(cachingStream);
+                
                 await next(ctx);
+                
                 ctx.Features.Set(originalBody);
                 await ctx.Response.CompleteAsync();
             }
