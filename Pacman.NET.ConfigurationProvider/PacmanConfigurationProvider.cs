@@ -6,6 +6,7 @@ namespace Pacman.NET.ConfigurationProvider;
 //Comments are only supported by beginning a line with the hash (#) symbol. Comments cannot begin in the middle of a line.
 public class PacmanConfigurationProvider : FileConfigurationProvider
 {
+    
     public PacmanConfigurationProvider(FileConfigurationSource source) : base(source)
     {
     }
@@ -36,16 +37,25 @@ public class PacmanConfigurationProvider : FileConfigurationProvider
                     prefixName = sectionName.Equals("options", StringComparison.OrdinalIgnoreCase) ? "Pacman:" : $"{sectionName}:";
                     break;
                 case [..] when !configLine.Contains('#'):
-                    Data.Add(configLine.Split('=', StringSplitOptions.RemoveEmptyEntries) switch
+                    Data.Add(configLine.TrimEnd().Split('=', StringSplitOptions.RemoveEmptyEntries) switch
                     {
                         [var key] => new KeyValuePair<string, string?>($"{prefixName}{key}", true.ToString()),
                         //[var key, var value] when Data.ContainsKey(key) => new KeyValuePair<string, string?>($"{prefixName}{key}", true.ToString()),
-                        [var key, var value] => new KeyValuePair<string, string?>(key, value),
+                        [var key, var value] when Data.ContainsKey(key) => new KeyValuePair<string, string?>($"{prefixName}{key.Trim()}", value.Trim()),
+                        [var key, var value] => new KeyValuePair<string, string?>($"{prefixName}{key.Trim()}", value.Trim()),
                         _ => throw new InvalidOperationException("Unable to parse line")
                     });
                     break;
             }
 
+        }
+    }
+
+    private void AddToList()
+    {
+        if (Data.TryGetValue("", out var item))
+        {
+            
         }
     }
 }

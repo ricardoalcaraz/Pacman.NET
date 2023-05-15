@@ -1,5 +1,4 @@
 ﻿@page "/"
-@using Microsoft.AspNetCore.Http
 @inject HttpClient Client;
 
 <PageTitle>Index</PageTitle>
@@ -18,7 +17,7 @@
     </div>
     <div>
         <label>
-            Package: <InputFile name="package" @bind="_packageFile"></InputFile>
+            @* Package: <InputFile name="package" @bind="_packageFile"></InputFile> *@
         </label>
     </div>
 </EditForm>
@@ -43,13 +42,12 @@ Welcome to your new app.
 <SurveyPrompt Title="How is Blazor working for you?"/>
 
 @code{
-    private IFormFile? _packageFile;
     private PackageRequest _packageRequest = new();
     private string Output = string.Empty;
     public async Task SubmitForm()
     {
         var formContent = new MultipartFormDataContent();
-        formContent.Add(new StreamContent(_packageFile.OpenReadStream()));
+        //formContent.Add(new StreamContent(_packageFile.OpenReadStream()));
         formContent.Add(JsonContent.Create(_packageRequest));
         var response = await Client.PostAsync("/pacman/package", formContent);
         Output = await response.Content.ReadAsStringAsync();

@@ -11,7 +11,7 @@ public class ConfigurationProviderTests
     public void Setup()
     {
         var host = Host.CreateApplicationBuilder();
-        host.Configuration.AddLinuxConfigFile("./pacman.conf", optional: false);
+        host.Configuration.AddLinuxConfigFile("pacman.conf", optional: false);
         
         var app = host.Build();
         _config = app.Services.GetRequiredService<IConfiguration>();

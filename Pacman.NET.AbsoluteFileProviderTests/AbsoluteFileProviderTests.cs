@@ -27,7 +27,7 @@ public class AbsoluteFileProviderTests
         var fileProvider = new AbsoluteProvider(Directory.GetCurrentDirectory());
         var len = fileProvider.GetFileInfo("test.txt").Length;
         var len2 = fileProvider.GetFileInfo("test2.txt").Length;
-        Assert.AreEqual(len, len2);
+        Assert.That(len2, Is.EqualTo(len));
     }
     [Test]
     public async Task CheckContents()

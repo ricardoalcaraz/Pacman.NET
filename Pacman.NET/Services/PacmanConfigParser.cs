@@ -73,39 +73,6 @@ public class PacmanConfigParser
                     settings[keyValueEntry.Key] = keyValueEntry.Value;
                 }
             }
-            // optionType = configOption[1..^1]; //return parsed settings
-            // else if (configOption is ['#'] or ['#', ..] or [])
-            //     optionType = string.Empty;
-            // else
-            //     optionType = configSetting = configOption; //parse and add setting
-            //
-            // var pacmanSetting = configSetting
-            // if (allSettings.TryGetValue(sectionName, out var configSection))
-            // {
-            //     ParseSection(configSection);
-            // }
-            // else
-            // {
-            //     allSettings[sectionName] = new PacmanConfigSection(sectionName, new List<string>());
-            // }
-            //
-            // if (configOption.TrimStart().StartsWith('#'))
-            // {
-            //     _logger.LogDebug("ConfigValue is ignored {Line}", configOption);
-            // }
-            // else if(configOption.Any())
-            // {
-            //     var configValue = configOption.Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            //     if (configValue is [_] or [_, _])
-            //     {
-            //         var pacmanConfigSetting = new PacmanConfigOption(configValue[0], configValue.LastOrDefault());
-            //         
-            //     }
-            //     else
-            //     {
-            //         _logger.LogWarning("Invalid config option for {Line}", configOption);
-            //     }
-            // }
         }
 
         return new Dictionary<string, string>();
