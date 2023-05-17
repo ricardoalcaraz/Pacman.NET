@@ -1,7 +1,6 @@
 using System.Formats.Tar;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Utilities;
-//Console.Error.WriteLine("Starting program...");
 
 var builder = WebApplication.CreateBuilder(args);
 if (OperatingSystem.IsLinux())
@@ -11,7 +10,6 @@ if (OperatingSystem.IsLinux())
 
 void WriteFolderPath(Environment.SpecialFolder folder)
 {
-    
     Console.WriteLine($"{folder.ToString()}:{Environment.GetFolderPath(folder)}");
 }
 
@@ -71,8 +69,6 @@ builder.Services.AddOptions<RepositoryOptions>()
 
         opt.RepositoryProvider = new PhysicalFileProvider(opt.RepoDirectory);
         opt.PackageProvider = new PhysicalFileProvider(opt.PackageDirectory);
-
-
     });
 
 var app = builder.Build();

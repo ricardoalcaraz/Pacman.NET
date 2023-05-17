@@ -3,13 +3,13 @@ namespace Pacman.NET.AbsoluteFileProvider;
 public class AbsoluteFileInfo : IFileInfo
 {
     private readonly FileInfo _actualFileInfo;
-    private readonly FileInfo _fileInfo;
 
     public AbsoluteFileInfo(string path)
     {
-        _fileInfo = new FileInfo(path);
         var actualPath = File.ResolveLinkTarget(path, true)?.FullName;
-        _actualFileInfo = string.IsNullOrWhiteSpace(actualPath) ? _fileInfo : new FileInfo(actualPath);
+        _actualFileInfo = new FileInfo(actualPath ?? path);
+        Name = Path.GetFileName(path);
+        IsDirectory = Directory.Exists(path);
     }
 
     public Stream CreateReadStream()
@@ -26,10 +26,10 @@ public class AbsoluteFileInfo : IFileInfo
             FileOptions.Asynchronous | FileOptions.SequentialScan);
     }
 
-    public bool Exists => _fileInfo.Exists;
-    public bool IsDirectory => false;
-    public DateTimeOffset LastModified => _fileInfo.LastWriteTimeUtc;
+    public bool Exists => _actualFileInfo.Exists;
+    public bool IsDirectory { get; }
+    public DateTimeOffset LastModified => _actualFileInfo.LastWriteTimeUtc;
     public long Length => _actualFileInfo.Length;
-    public string Name => _fileInfo.Name;
+    public string Name { get; }
     public string PhysicalPath => _actualFileInfo.FullName;
 }

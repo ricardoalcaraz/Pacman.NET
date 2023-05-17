@@ -24,17 +24,12 @@ public class AbsoluteProvider : IFileProvider
     public IFileInfo GetFileInfo(string subpath)
     {
         var fileInfo = _fileProvider.GetFileInfo(subpath);
-        if (fileInfo.IsDirectory)
-        {
-            return fileInfo;
-        }
-
         if (!fileInfo.Exists || string.IsNullOrWhiteSpace(fileInfo.PhysicalPath))
         {
             return new NotFoundFileInfo(subpath);
         }
-
-        return new AbsoluteFileInfo(fileInfo.PhysicalPath);
+        
+        return fileInfo.IsDirectory ? fileInfo : new AbsoluteFileInfo(fileInfo.PhysicalPath);
     }
 
     public IChangeToken Watch(string filter)
