@@ -11,7 +11,7 @@ public static class PacmanConfigProviderExtensions
         {
             throw new ArgumentException("Path is required", nameof(path));
         }
-
+        
         builder.Add<PacmanConfigurationSource>(s =>
         {
             s.FileProvider = new PhysicalFileProvider(Directory.GetCurrentDirectory());

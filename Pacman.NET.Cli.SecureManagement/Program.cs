@@ -11,15 +11,10 @@ using Microsoft.Extensions.Logging;
 Console.WriteLine("Hello, World!");
 var builder = Host.CreateDefaultBuilder(args);
 
-
-builder.UseSystemd();
 builder.UseConsoleLifetime();
-builder.ConfigureLogging(c =>
-{
-    c.AddConsole();
-    c.AddDebug();
-});
+
 var host = builder.Build();
+
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 var keyId = args.LastOrDefault() ?? string.Empty;

@@ -13,10 +13,10 @@ public class AbsoluteDirectoryContents : IDirectoryContents
 
     public IEnumerator<IFileInfo> GetEnumerator()
     {
-        foreach (var file in _directoryContents)
+        foreach (var directoryContent in _directoryContents)
         {
-            var fil = file.IsDirectory || string.IsNullOrWhiteSpace(file.PhysicalPath) ? file : new AbsoluteFileInfo(file.PhysicalPath);
-            yield return fil;
+            var file = directoryContent.IsDirectory || File.Exists(directoryContent.PhysicalPath) ? directoryContent : new AbsoluteFileInfo(directoryContent.PhysicalPath!);
+            yield return file;
         }
     }
 
