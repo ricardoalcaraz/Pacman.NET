@@ -178,7 +178,14 @@ public class PackageCacheMiddleware : IMiddleware
             {
                 //response body is read only so we'll switch it so we can cache the body as it's getting streamed
                 var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                await using var cachingStream = new CachingStream(originalBody, tempFileName);
+                var tmpFileStream = new FileStream(tempFileName, new FileStreamOptions
+                {
+                    Access = FileAccess.Write,
+                    Mode = FileMode.Create,
+                    Options = FileOptions.SequentialScan,
+                    Share = FileShare.None
+                });
+                await using var cachingStream = new CachingStream(originalBody, tmpFileStream);
                 ctx.Features.Set<IHttpResponseBodyFeature>(cachingStream);
                 
                 await next(ctx);

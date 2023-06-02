@@ -1,6 +1,5 @@
 using System.IO.Pipelines;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.NET.Middleware;
 
@@ -8,19 +7,13 @@ public class CachingStream : Stream, IHttpResponseBodyFeature
 {
     private PipeWriter? _pipeAdapter;
     private readonly IHttpResponseBodyFeature _originalBodyFeature;
-    private readonly string _fileName;
     private readonly FileStream _fileStream;
-    public CachingStream(IHttpResponseBodyFeature originalBodyFeature, string fileName)
+    private volatile bool _isDisposed;
+
+    public CachingStream(IHttpResponseBodyFeature originalBodyFeature, FileStream fileStream)
     {
         _originalBodyFeature = originalBodyFeature;
-        _fileName = fileName;
-        _fileStream = new FileStream(fileName, new FileStreamOptions
-        {
-            Access = FileAccess.Write,
-            Mode = FileMode.Create,
-            Options = FileOptions.SequentialScan,
-            Share = FileShare.None
-        });
+        _fileStream = fileStream;
     }
 
 
@@ -40,7 +33,12 @@ public class CachingStream : Stream, IHttpResponseBodyFeature
     public Task SendFileAsync(string path, long offset, long? count, CancellationToken cancellationToken = default)
     {
         //check if the file can even be opened
-        return _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
+        if (File.Exists(path))
+        {
+            return _originalBodyFeature.SendFileAsync(path, offset, count, cancellationToken);
+        }
+
+        return Task.CompletedTask;
     }
 
 
@@ -83,11 +81,15 @@ public class CachingStream : Stream, IHttpResponseBodyFeature
         _fileStream.Write(buffer, offset, count);
     }
 
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ctx = default)
+    {
+        await _fileStream.WriteAsync(buffer, ctx);
+        await _originalBodyFeature.Stream.WriteAsync(buffer, ctx);
+    }
+
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ctx)
     {
-        var memoryBuffer = buffer.AsMemory(offset, count);
-        await _fileStream.WriteAsync(memoryBuffer, ctx);
-        await _originalBodyFeature.Stream.WriteAsync(memoryBuffer, ctx);
+        await WriteAsync(buffer.AsMemory()[offset..count], ctx);
     }
 
     public override bool CanRead => false;
@@ -106,16 +108,22 @@ public class CachingStream : Stream, IHttpResponseBodyFeature
 
     public override async ValueTask DisposeAsync()
     {
-        await _fileStream.DisposeAsync();
-        await _originalBodyFeature.Stream.DisposeAsync();
-        await base.DisposeAsync();
+        if (!_isDisposed)
+        {
+            _isDisposed = true;
+            await _fileStream.DisposeAsync();
+            await _originalBodyFeature.Stream.DisposeAsync();
+        }
     }
 
     protected override void Dispose(bool disposing)
     {
-        _fileStream.Dispose();
-        _originalBodyFeature.Stream.Dispose();
-        base.Dispose(disposing);
+        if (!_isDisposed)
+        {
+            _isDisposed = true;
+            _fileStream.Dispose();
+            _originalBodyFeature.Stream.Dispose();
+        }
     }
 
 }
