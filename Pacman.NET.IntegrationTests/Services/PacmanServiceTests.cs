@@ -10,7 +10,7 @@ public class PacmanServiceTests : WebAppFixture
     [SetUp]
     public void Init()
     {
-        _pacmanService = WebAppFactory.Services.GetRequiredService<IPacmanService>();
+        _pacmanService = _webAppFactory.Services.GetRequiredService<IPacmanService>();
     }
     
     [Test]

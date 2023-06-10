@@ -49,4 +49,8 @@
       <Folder Include="Hubs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Pacman.NET.Utilities\Pacman.NET.Utilities.csproj" />
+    </ItemGroup>
+
 </Project>

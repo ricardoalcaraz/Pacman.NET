@@ -1,7 +1,11 @@
+using System;
+using System.IO;
 using System.IO.Pipelines;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
 
-namespace Pacman.NET.Middleware;
+namespace Pacman.NET.Utilities;
 
 public class CachingStream : Stream, IHttpResponseBodyFeature
 {

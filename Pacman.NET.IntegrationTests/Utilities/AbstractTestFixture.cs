@@ -2,20 +2,20 @@ namespace Pacman.NET.IntegrationTests.Utilities;
 
 public class WebAppFixture
 {
-    public WebApplicationFactory<PacmanOptions> WebAppFactory = null!;
-    protected HttpClient Client => WebAppFactory.CreateDefaultClient();
+    public WebApplicationFactory<PacmanOptions> _webAppFactory = null!;
+    protected HttpClient Client => _webAppFactory.CreateDefaultClient();
 
     [OneTimeSetUp]
     public void Setup()
     {
-        WebAppFactory = new CustomWebAppFactory();
+        _webAppFactory = new CustomWebAppFactory();
     }
 
 
     [OneTimeTearDown]
     public async Task Cleanup()
     {
-        await WebAppFactory.DisposeAsync();
+        await _webAppFactory.DisposeAsync();
     }
 }
 

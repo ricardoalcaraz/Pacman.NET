@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.FileProviders.Physical;
+using Pacman.NET.Utilities;
 using Yarp.ReverseProxy.Model;
 
 namespace Pacman.NET.Middleware;
@@ -8,6 +9,7 @@ namespace Pacman.NET.Middleware;
 
 public class PackageCacheMiddleware : IMiddleware
 {
+    private const string OCTET_STREAM = "application/octet-stream";
     private readonly RepositoryOptions _cacheOptions;
     private readonly ILogger<PackageCacheMiddleware> _logger;
     private readonly IWebHostEnvironment _env;
@@ -133,6 +135,7 @@ public class PackageCacheMiddleware : IMiddleware
         if (ctx.Request.Path.StartsWithSegments(_cacheOptions.BaseAddress, out var pathString))
         {
             var fileName = Path.GetFileName(pathString);
+            
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 _logger.LogInformation("No package name given");
@@ -154,7 +157,7 @@ public class PackageCacheMiddleware : IMiddleware
                     var fileInfo = File.ResolveLinkTarget(file.LinkTarget, true) as FileInfo;
                     await ctx.Response.SendFileAsync(new PhysicalFileInfo(fileInfo!));
                 }
-                ctx.Response.ContentType = "application/octet-stream";
+                ctx.Response.ContentType = OCTET_STREAM;
                 return;
             }
 
@@ -164,49 +167,14 @@ public class PackageCacheMiddleware : IMiddleware
             if (proxyFeature is null)
             {
                 _logger.LogWarning("Proxy feature not found");
-                ctx.Response.StatusCode = 404;
                 ctx.Response.Clear();
+                ctx.Response.StatusCode = 404;
+
                 await ctx.Response.CompleteAsync();
                 return;
             }
 
-            _logger.LogDebug("Proxy feature found, creating a wrapped stream for {Name}", fileName);
-
-            var tempFileName = Path.GetTempFileName();
-
-            try
-            {
-                //response body is read only so we'll switch it so we can cache the body as it's getting streamed
-                var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
-                var tmpFileStream = new FileStream(tempFileName, new FileStreamOptions
-                {
-                    Access = FileAccess.Write,
-                    Mode = FileMode.Create,
-                    Options = FileOptions.SequentialScan,
-                    Share = FileShare.None
-                });
-                await using var cachingStream = new CachingStream(originalBody, tmpFileStream);
-                ctx.Features.Set<IHttpResponseBodyFeature>(cachingStream);
-                
-                await next(ctx);
-                
-                ctx.Features.Set(originalBody);
-                await ctx.Response.CompleteAsync();
-            }
-            finally
-            {
-                if (ctx.Response.StatusCode == 200)
-                {
-                    var tmpFileInfo = new FileInfo(tempFileName);
-                    if (tmpFileInfo.Exists)
-                    {
-                        if (tmpFileInfo.Length == ctx.Response.ContentLength && Path.GetExtension(pathString) != "db")
-                        {
-                            File.Copy(tempFileName, Path.Combine(_cacheOptions.PackageDirectory, Path.GetFileName(pathString)));
-                        }
-                    }
-                }
-            }
+            await ProxyRequest(ctx, next, fileName, pathString);
 
             //if response still hasn't started then declare it as a 404
             // if (!ctx.Response.HasStarted)
@@ -312,7 +280,48 @@ public class PackageCacheMiddleware : IMiddleware
         }
 
     }
-    
+
+    private async Task ProxyRequest(HttpContext ctx, RequestDelegate next, string fileName, PathString pathString)
+    {
+        _logger.LogDebug("Proxy feature found, creating a wrapped stream for {Name}", fileName);
+
+        var tempFileName = Path.GetTempFileName();
+
+        try
+        {
+            //response body is read only so we'll switch it so we can cache the body as it's getting streamed
+            var originalBody = ctx.Features.Get<IHttpResponseBodyFeature>()!;
+            var tmpFileStream = new FileStream(tempFileName, new FileStreamOptions
+            {
+                Access = FileAccess.Write,
+                Mode = FileMode.Create,
+                Options = FileOptions.SequentialScan,
+                Share = FileShare.None
+            });
+            await using var cachingStream = new CachingStream(originalBody, tmpFileStream);
+            ctx.Features.Set<IHttpResponseBodyFeature>(cachingStream);
+
+            await next(ctx);
+
+            ctx.Features.Set(originalBody);
+            await ctx.Response.CompleteAsync();
+        }
+        finally
+        {
+            if (ctx.Response.StatusCode == 200)
+            {
+                var tmpFileInfo = new FileInfo(tempFileName);
+                if (tmpFileInfo.Exists)
+                {
+                    if (tmpFileInfo.Length == ctx.Response.ContentLength && Path.GetExtension(pathString) != "db")
+                    {
+                        File.Copy(tempFileName, Path.Combine(_cacheOptions.PackageDirectory, Path.GetFileName(pathString)));
+                    }
+                }
+            }
+        }
+    }
+
     private IFileProvider CreateFileProvider(string name)
     {
         var fileProviderPath = _env.IsDevelopment()

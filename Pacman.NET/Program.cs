@@ -1,5 +1,6 @@
 using System.Formats.Tar;
 using Microsoft.Extensions.FileProviders;
+using Pacman.NET.Middleware;
 using Pacman.NET.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,9 +38,6 @@ void WriteAllFolders()
 }
 WriteAllFolders();
 
-var tmpFolder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Pacman.NET", "db")).FullName;
-TarFile.ExtractToDirectory("", tmpFolder, true);
-
 builder.AddPacmanServer();
 
 builder.Services.AddControllers();
@@ -52,6 +50,7 @@ builder.Services.AddSystemd();
 builder.Services
     .AddSignalR()
     .AddMessagePackProtocol();
+var cachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "Pacman.NET", "cache");
 
 builder.Services.AddOptions<RepositoryOptions>()
     .BindConfiguration("Pacman")
@@ -60,9 +59,9 @@ builder.Services.AddOptions<RepositoryOptions>()
         opt.RepoDirectory = builder.Environment.IsDevelopment()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ".local", "Pacman.NET", "repos")
             : builder.Configuration["Pacman:RepositoryDirectory"] ?? throw new InvalidOperationException();
-        
+
         opt.PackageDirectory = builder.Environment.IsDevelopment() 
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "Pacman.NET", "cache")
+            ? cachePath
             : builder.Configuration["Pacman:CacheDirectory"] ?? throw new InvalidOperationException();
         opt.RepoDirectory = Directory.CreateDirectory(opt.RepoDirectory).FullName;
         opt.PackageDirectory = Directory.CreateDirectory(opt.PackageDirectory).FullName;
@@ -73,7 +72,7 @@ builder.Services.AddOptions<RepositoryOptions>()
 
 var app = builder.Build();
 
-var cacheDir = new DirectoryInfo(app.Configuration["Options:CacheDir"] ?? string.Empty);
+var cacheDir = new DirectoryInfo(app.Configuration["Options:CacheDir"] ?? cachePath);
 if (cacheDir.Exists)
 {
     app.Logger.LogInformation("CacheDir exists at {Path}", cacheDir);
@@ -89,8 +88,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseRouting();
 
+app.UseRouting();
+app.UseMiddleware<PackageCacheMiddleware>();
 app.UseStaticFiles(new StaticFileOptions
 {
     RequestPath = options.BaseAddress,
