@@ -1,108 +1,86 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
-Console.WriteLine("Hello, World!");
+Console.OpenStandardInput(4096);
 var builder = Host.CreateDefaultBuilder(args);
 
 builder.UseConsoleLifetime();
 
 var host = builder.Build();
+Extensions.Logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 var keyId = args.LastOrDefault() ?? string.Empty;
+var hostingEnvironment = host.Services.GetRequiredService<IHostEnvironment>();
 
-foreach (var arg in args)
+if(!hostingEnvironment.IsDevelopment() && Environment.IsPrivilegedProcess )
 {
-    switch (arg)
-    {
-        case "-i" or "--dbDir":
-            logger.LogInformation("Database directory: {DbDir}", arg);
-            break;
-        case "-f" or "--file":
-            logger.LogInformation("Cache dir: {ConfigFile}", arg);
-            break;
-        default:
-            logger.LogInformation("Invalid argument: {Arg}", arg);
-            break;
-    }
-    logger.LogInformation("Argument: {Arg}", arg);
+    logger.LogError("This program must be run as root");
+    return;
 }
 
-AddPubKey(keyId);
+
+await Extensions.AddPubKey(keyId);
 
 var config = host.Services.GetRequiredService<IConfiguration>();
-var user = Environment.UserName;
 var cliOptions = config.Get<CliAppOptions>()!;
 
-void AddPubKey(string keyId)
-{
-    using var process = new Process();
-    process.StartInfo = new ProcessStartInfo("/usr/bin/gpg", $"--armor --export {keyId}")
-    {
-        UseShellExecute = false,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        CreateNoWindow = true
-    };
-    
-    process.Start();
-    var tmpFileName = Path.GetTempFileName();
-
-    using var tmpFileStream = new FileStream(tmpFileName, new FileStreamOptions
-    {
-        Access = FileAccess.Write,
-        BufferSize = 0,
-        Mode = FileMode.Create,
-        Options = FileOptions.DeleteOnClose,
-        Share = FileShare.Delete
-    });
-    process.StandardOutput.BaseStream.CopyTo(tmpFileStream);
-
-    logger.LogDebug("{Key}", File.ReadAllText(tmpFileName));
-    logger.LogDebug("Wrote key to {File}", tmpFileName);
-    using var addKeyProcess = Process.Start("/usr/bin/pacman-key", $"--add {tmpFileName}");
-    
-    addKeyProcess.WaitForExit();
-
-    using var signKeyProcess = new Process();//Process.Start("/usr/bin/pacman-key", $"-u ralcaraz --lsign {keyId}");
-    signKeyProcess.StartInfo = new ProcessStartInfo("/usr/bin/gpg", $"--armor --export {keyId}")
-    {
-        UseShellExecute = false,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        CreateNoWindow = true
-    };
-    signKeyProcess.Start();
-    signKeyProcess.WaitForExit();
-}
-
-var compositeFileProvider = new CompositeFileProvider(
-    new PhysicalFileProvider(cliOptions.DbDir),
-    new PhysicalFileProvider(cliOptions.CacheDir)
-);
-
-compositeFileProvider.GetFileInfo("");
 logger.LogInformation("Starting app with {Options}", cliOptions);
 
 await host.RunAsync();
 
-public record CliAppOptions
+internal static class Extensions
 {
-    [Required]
-    public required string DbDir { get; init; }
-    
-    [Required]
-    public required string CacheDir { get; init; }
-    
-    public string Gpg { get; init; }
-}
+    public static ILogger<Program>? Logger { get; set; }
+    public static async Task AddPubKey(string id)
+    {
+        var gpgCommand = Cli.Wrap("gpg")
+            .WithArguments($"--armor --export {id}");
+        
+        Logger?.LogInformation("{Gpg}", gpgCommand);
+        
+        await gpgCommand.ExecuteBufferedWithMetrics();
+    }
 
+    public static Command CreateCliCommand(this string command, params string[] args)
+    {
+        var cliCommand = Cli.Wrap(command)
+            .WithArguments(argsBuilder =>
+            {
+                foreach (var arg in args)
+                {
+                    argsBuilder.Add(arg, false);
+                }
+            });
+        
+        return cliCommand;
+    }
+    
+    private static void ProcessArgs()
+    {
+        Logger?.LogInformation("Running with privileges as {User}", Environment.UserName);
+
+        foreach (var arg in Environment.GetCommandLineArgs().SkipLast(1))
+        {
+            switch (arg)
+            {
+                case "-i" or "--dbDir":
+                    Logger?.LogInformation("Database directory: {DbDir}", arg);
+                    break;
+                case "-f" or "--file":
+                    Logger?.LogInformation("Cache dir: {ConfigFile}", arg);
+                    break;
+                default:
+                    Logger?.LogInformation("Invalid argument: {Arg}", arg);
+                    break;
+            }
+            Logger?.LogInformation("Argument: {Arg}", arg);
+        }
+    }
+}
 

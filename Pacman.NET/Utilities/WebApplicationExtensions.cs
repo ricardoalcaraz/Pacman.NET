@@ -8,6 +8,7 @@ public static class WebApplicationExtensions
 {
     public static WebApplicationBuilder AddPacmanServer(this WebApplicationBuilder builder)
     {
+        builder.Services.AddHostedService<InformationLoggingService>();
         builder.Services.AddScoped<PackageCacheMiddleware>();
         builder.Services.AddSingleton<MirrorSyncService>();
         builder.Services.AddSingleton<PacmanService>();
@@ -89,6 +90,7 @@ public static class WebApplicationExtensions
     public static IReverseProxyApplicationBuilder UsePackageCache(this IReverseProxyApplicationBuilder proxyBuilder)
     {
         proxyBuilder.UseMiddleware<PackageCacheMiddleware>();
+        
         return proxyBuilder;
     }
 }

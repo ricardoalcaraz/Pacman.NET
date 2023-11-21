@@ -29,11 +29,16 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="CliWrap" Version="3.6.4" />
       <PackageReference Include="Microsoft.Extensions.FileProviders.Composite" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
       <PackageReference Include="System.Text.Json" Version="7.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Pacman.NET.Utilities\Pacman.NET.Utilities.csproj" />
     </ItemGroup>
 
 </Project>

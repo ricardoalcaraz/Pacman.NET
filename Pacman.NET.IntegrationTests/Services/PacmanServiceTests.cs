@@ -16,7 +16,7 @@ public class PacmanServiceTests : WebAppFixture
     [Test]
     public async Task TestDependency_PacmanExists_ShouldSucceed()
     {
-        var isValid = await _pacmanService.TestDependencies(CancellationToken.None);
+        bool isValid = await _pacmanService.TestDependencies(CancellationToken.None);
         Console.WriteLine(isValid);
         That(isValid, Is.True);
     }

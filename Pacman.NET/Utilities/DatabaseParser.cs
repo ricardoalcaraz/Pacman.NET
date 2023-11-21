@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Formats.Tar;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
 
@@ -28,6 +29,8 @@ public class DatabaseFileProvider : IFileProvider
 {
     public IFileInfo GetFileInfo(string subpath)
     {
+        var tarStream = Stream.Null;
+        TarReader reader = new TarReader(tarStream);
         throw new NotImplementedException();
     }
 

@@ -1,9 +1,10 @@
-using System.Formats.Tar;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Middleware;
-using Pacman.NET.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+
 if (OperatingSystem.IsLinux())
 {
     builder.Configuration.AddIniFile("/etc/pacman.conf", true, true);
@@ -14,21 +15,18 @@ void WriteFolderPath(Environment.SpecialFolder folder)
     Console.WriteLine($"{folder.ToString()}:{Environment.GetFolderPath(folder)}");
 }
 
+
 void WriteAllFolders()
 {
     var enumValues = Enum.GetValues<Environment.SpecialFolder>();
     List<Environment.SpecialFolder> emptyFolders = new();
     foreach (var specialFolder in enumValues)
     {
-        var path = Environment.GetFolderPath(specialFolder, Environment.SpecialFolderOption.None);
+        var path = Environment.GetFolderPath(specialFolder, Environment.SpecialFolderOption.DoNotVerify);
         if (string.IsNullOrWhiteSpace(path))
-        {
             emptyFolders.Add(specialFolder);
-        }
         else
-        {
             WriteFolderPath(specialFolder);
-        }
     }
 
     foreach (var em in emptyFolders)

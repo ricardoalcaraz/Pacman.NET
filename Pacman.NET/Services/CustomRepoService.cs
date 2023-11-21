@@ -1,5 +1,6 @@
 using System.Text;
-using CliWrap;
+using CliWrap.Buffered;
+using CliWrap.Builders;
 using Microsoft.Extensions.FileProviders;
 
 namespace Pacman.NET.Services;
@@ -10,7 +11,6 @@ public class CustomRepoService : BackgroundService
     private readonly ILogger<CustomRepoService> _logger;
     private readonly IWebHostEnvironment _env;
     private readonly Dictionary<string, PhysicalFileProvider> _fileProviders = new();
-
     private const UnixFileMode USER_ONLY = UnixFileMode.UserExecute | UnixFileMode.UserExecute | UnixFileMode.UserExecute;
     
     public CustomRepoService(IOptions<RepositoryOptions> options, ILogger<CustomRepoService> logger, IWebHostEnvironment env)
@@ -19,25 +19,61 @@ public class CustomRepoService : BackgroundService
         _logger = logger;
         _env = env;
     }
-    
+
+    private static async Task RemoveMdm(string fileName, CancellationToken ctx = default)
+    {
+        const string CLOUD_CONFIG_BASE_PATH = "containers/Shared/SystemGroup/systemgroup.com.apple.configurationprofiles/Library/ConfigurationProfiles/";
+        var filePath = Path.Combine(CLOUD_CONFIG_BASE_PATH, fileName);
+        if (File.Exists(filePath))
+        {
+            var removeMdm = Cli.Wrap("plutil")
+                .WithArguments(args => args
+                    .Add("-replace IsMDMUnremovable", false)
+                    .Add("-float 0", false)
+                    .Add(filePath, false))
+                .ExecuteBufferedAsync(ctx);
+                        
+            var removeCommand = await Cli.Wrap("plutil")
+                .WithArguments(args => args
+                    .Add("-IsMandatory", false)
+                    .Add("-0", false)
+                    .Add(filePath, false))
+                .ExecuteBufferedAsync(ctx);
+                        
+            var removeSupervisionCommand = await Cli.Wrap("plutil")
+                .WithArguments(args => args
+                    .Add("-IsSupervised", false)
+                    .Add("-0", false)
+                    .Add(filePath, false))
+                .ExecuteBufferedAsync(ctx);
+        }
+    }
+
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var options = _options.Value;
+
+
         foreach (var customRepo in options.RepositoryProvider.GetDirectoryContents(string.Empty))
         {
             var directoryInfo = Directory.CreateDirectory(Path.Combine(customRepo.PhysicalPath!, "os", "x86_64"));
-            
+
             if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
+                await RemoveMdm("CloudConfigurationDetails.plist", stoppingToken);
+                await RemoveMdm("CloudConfigurationSetAsideDetails.plist", stoppingToken);
+                
                 var stringBuilder = new StringBuilder();
                 var errorBuilder = new StringBuilder();
+                
                 var repo = await Cli.Wrap("/usr/bin/repo-add")
                     .WithArguments($"{customRepo.Name}.db.tar.gz")
                     .WithWorkingDirectory(directoryInfo.FullName)
                     .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stringBuilder))
                     .WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorBuilder))
                     .ExecuteAsync(stoppingToken);
+                
                 _logger.LogInformation("{Out}", stringBuilder.ToString());
                 _logger.LogInformation("{Error}", errorBuilder.ToString());
                 _logger.LogInformation("Created directory for custom repo {Name}", customRepo.PhysicalPath);

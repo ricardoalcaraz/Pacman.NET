@@ -9,7 +9,7 @@ builder.Host.UseSystemd();
 
 var app = builder.Build();
 
-var path = app.Configuration["MirrorDir"];
+string? path = app.Configuration["MirrorDir"];
 app.UseFileServer(new FileServerOptions
 {
     RequestPath = "/archlinux",

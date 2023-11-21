@@ -1,5 +1,3 @@
-using CliWrap;
-
 namespace Pacman.NET.Services;
 
 public class PaccacheBackgroundService : BackgroundService
