@@ -44,33 +44,14 @@ public class PacmanConfigParser
                 var configValues = configLine.Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                 var keyValueEntry = configValues switch
                 {
-                    [_] => new KeyValuePair<string, string>(configValues[0], string.Empty),
-                    [_, _] => new KeyValuePair<string, string>(configValues[0], configValues[1]),
+                    [var boolKeyName] => new KeyValuePair<string, string>(boolKeyName, string.Empty),
+                    [var keyName, var val] => new KeyValuePair<string, string>(keyName, val),
                     _ => new KeyValuePair<string, string>(string.Empty, string.Empty)
                 };
-                var file = new FileStream("", new FileStreamOptions
-                {
-                    Access = (FileAccess)0,
-                    BufferSize = 0,
-                    Mode = (FileMode)0,
-                    Options = FileOptions.None,
-                    PreallocationSize = 0,
-                    Share = FileShare.None,
-                });
 
-                      var configSettingName = keyValueEntry.Key;
-                if (string.IsNullOrWhiteSpace(configSettingName))
-                {
-                    
-                }
-                else if (settings.TryAdd(keyValueEntry.Key, keyValueEntry.Value))
+                if (settings.TryAdd(keyValueEntry.Key, keyValueEntry.Value))
                 {
                     _logger.LogInformation("Added {Entry}", keyValueEntry);
-
-                }
-                else
-                {
-                    settings[keyValueEntry.Key] = keyValueEntry.Value;
                 }
             }
         }
@@ -83,8 +64,8 @@ public class PacmanConfigParser
         var streamReader = File.OpenText(filePath);
         while (!streamReader.EndOfStream)
         {
-            var configLine = await streamReader.ReadLineAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(configLine) || configLine.StartsWith("#"))
+            var configLine = (await streamReader.ReadLineAsync(cancellationToken))?.Trim();
+            if (string.IsNullOrWhiteSpace(configLine) || configLine.StartsWith('#'))
             {
                 _logger.LogDebug("Ignored empty line");
             }

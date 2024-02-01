@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.FileProviders.Physical;
@@ -46,12 +47,16 @@ public class PackageCacheMiddleware : IMiddleware
                 await SendFileAsync(ctx, packageInfo);
             }
 
-            if (DateTime.TryParse(ctx.Request.Headers.LastModified, out var lastModified))
+            if (DateTime.TryParse(ctx.Request.Headers.IfModifiedSince, out var lastModified))
             {
+                
                 if (packageInfo.LastModified >= lastModified)
                 {
                     _logger.LogInformation("New file found, returning from cache");
                 }
+
+                ctx.Response.StatusCode = (int)HttpStatusCode.NotModified;
+                return;
             }
             _logger.LogInformation("File not found in cache for {Name}", fileName);
             var proxyFeature = ctx.Features.Get<IReverseProxyFeature>();
