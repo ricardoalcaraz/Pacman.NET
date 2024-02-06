@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.PersonalRepo", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.NET.Mirror", "Pacman.NET.Mirror\Pacman.NET.Mirror.csproj", "{77BD42AD-0371-4F72-B3A0-7EDC86AABF8F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{170F3FA0-83F5-44D8-B9AE-CA83120DB4A5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -84,5 +86,9 @@ Global
 		{77BD42AD-0371-4F72-B3A0-7EDC86AABF8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77BD42AD-0371-4F72-B3A0-7EDC86AABF8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77BD42AD-0371-4F72-B3A0-7EDC86AABF8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{170F3FA0-83F5-44D8-B9AE-CA83120DB4A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{170F3FA0-83F5-44D8-B9AE-CA83120DB4A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{170F3FA0-83F5-44D8-B9AE-CA83120DB4A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{170F3FA0-83F5-44D8-B9AE-CA83120DB4A5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

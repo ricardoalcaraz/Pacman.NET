@@ -3,13 +3,6 @@ using Pacman.NET.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
-if (OperatingSystem.IsLinux())
-{
-    builder.Configuration.AddIniFile("/etc/pacman.conf", true, true);
-}
-
 void WriteFolderPath(Environment.SpecialFolder folder)
 {
     Console.WriteLine($"{folder.ToString()}:{Environment.GetFolderPath(folder)}");

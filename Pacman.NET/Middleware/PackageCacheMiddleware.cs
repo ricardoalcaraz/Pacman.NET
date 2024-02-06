@@ -38,7 +38,7 @@ public class PackageCacheMiddleware : IMiddleware
             {
                 _logger.LogInformation("No file found for {Name}", fileName);
                 ctx.Response.StatusCode = 404;
-                await next(ctx);
+                await ctx.Response.CompleteAsync();
                 return;
             }
 

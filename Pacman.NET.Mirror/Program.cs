@@ -6,16 +6,13 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Logging.AddConsole();
 builder.Host.UseSystemd();
-
 var app = builder.Build();
 
-string? path = app.Configuration["MirrorDir"];
+string? path = app.Configuration["CacheDir"];
 app.UseFileServer(new FileServerOptions
 {
     RequestPath = "/archlinux",
-    FileProvider = Directory.Exists(path) || app.Environment.IsDevelopment()
-        ? app.Environment.ContentRootFileProvider
-        : new AbsoluteProvider(path!),
+    FileProvider = new AbsoluteProvider(path!),
     RedirectToAppendTrailingSlash = true,
     EnableDirectoryBrowsing = true,
     EnableDefaultFiles = false,

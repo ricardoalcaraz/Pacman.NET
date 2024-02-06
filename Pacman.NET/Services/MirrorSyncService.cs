@@ -66,7 +66,7 @@ public class MirrorSyncService : BackgroundService, IProxyConfigProvider
                 Destinations = mirrorDestinations
             }
         });
-        if (mirrorDestinations.Any())
+        if (mirrorDestinations.Count != 0)
         {
             _logger.LogInformation("Discovered {Count} mirrors to use", mirrorDestinations.Count);
             _inMemoryConfigProvider.Update(_routes, _cluster);
