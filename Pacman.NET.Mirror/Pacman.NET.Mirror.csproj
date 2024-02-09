@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="CliWrap" Version="3.6.6" />
       <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="8.0.0-preview.4.23259.5" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0-preview.4.23259.5" />
       <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.0-preview.4.23259.5" />

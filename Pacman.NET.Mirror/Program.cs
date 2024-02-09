@@ -1,28 +1,35 @@
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.StaticFiles;
 using Pacman.NET.AbsoluteFileProvider;
+using Pacman.NET.Mirror;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Logging.AddConsole();
+
 builder.Host.UseSystemd();
+builder.Services.AddHostedService<SyncMirrorService>();
 var app = builder.Build();
 
-string? path = app.Configuration["CacheDir"];
-app.UseFileServer(new FileServerOptions
+var path = app.Configuration["MirrorDir"];
+if (Directory.Exists(path))
 {
-    RequestPath = "/archlinux",
-    FileProvider = new AbsoluteProvider(path!),
-    RedirectToAppendTrailingSlash = true,
-    EnableDirectoryBrowsing = true,
-    EnableDefaultFiles = false,
-    DirectoryBrowserOptions = { Formatter = new HtmlDirectoryFormatter(HtmlEncoder.Default) },
-    StaticFileOptions =
+    app.UseFileServer(new FileServerOptions
     {
-        ServeUnknownFileTypes = true,
-        DefaultContentType = "application/octet-stream"
-    }
-});
+        RequestPath = "/archlinux",
+        FileProvider = new AbsoluteProvider(path),
+        RedirectToAppendTrailingSlash = true,
+        EnableDirectoryBrowsing = true,
+        EnableDefaultFiles = false,
+        DirectoryBrowserOptions = { Formatter = new HtmlDirectoryFormatter(HtmlEncoder.Default) },
+        StaticFileOptions =
+        {
+            ServeUnknownFileTypes = true,
+            DefaultContentType = "application/octet-stream"
+        }
+    });
+}
+
 
 app.MapGet("/ping", () => Results.Ok("pong"));
 

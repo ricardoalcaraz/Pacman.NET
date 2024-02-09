@@ -1,8 +1,3 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=47d4223f_002Dd36e_002D42d6_002Db8ff_002D03f30c2074bf/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="AbsoluteFileProviderTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
-  &lt;TestAncestor&gt;
-    &lt;TestId&gt;NUnit3x::ED3E37A6-7D59-47D4-8CD6-EC0BF2C01F98::net8.0::Pacman.NET.AbsoluteFileProviderTests.AbsoluteFileProviderTests&lt;/TestId&gt;
-    &lt;TestId&gt;NUnit3x::4B68DA01-46B2-49BA-AB92-3D113661DFCB::net8.0::Pacman.NET.IntegrationTests.Middleware.PackageCacheMiddlewareTests.GetPackage_ModifiedSince_ShouldReturn304&lt;/TestId&gt;
-    &lt;TestId&gt;NUnit3x::4B68DA01-46B2-49BA-AB92-3D113661DFCB::net8.0::Pacman.NET.IntegrationTests.Middleware.PackageCacheMiddlewareTests.GetPackage_PackageDoesNotExist_ShouldReturn404&lt;/TestId&gt;
-  &lt;/TestAncestor&gt;
-&lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>
+	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolutionBuilderNext/OutputVerbosityLevel/@EntryValue">Detailed</s:String>
+	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolutionBuilderNext/FileVerbosityLevel/@EntryValue">Detailed</s:String></wpf:ResourceDictionary>
