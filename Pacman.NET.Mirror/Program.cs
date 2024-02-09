@@ -9,6 +9,7 @@ builder.Logging.AddConsole();
 
 builder.Host.UseSystemd();
 builder.Services.AddHostedService<SyncMirrorService>();
+builder.Services.AddOptions<SyncMirrorOptions>();
 var app = builder.Build();
 
 var path = app.Configuration["MirrorDir"];

@@ -61,9 +61,6 @@ public class CustomRepoService : BackgroundService
 
             if (directoryInfo.Exists && File.Exists("/usr/bin/repo-add"))
             {
-                await RemoveMdm("CloudConfigurationDetails.plist", stoppingToken);
-                await RemoveMdm("CloudConfigurationSetAsideDetails.plist", stoppingToken);
-                
                 var stringBuilder = new StringBuilder();
                 var errorBuilder = new StringBuilder();
                 
