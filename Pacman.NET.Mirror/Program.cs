@@ -9,10 +9,11 @@ builder.Logging.AddConsole();
 
 builder.Host.UseSystemd();
 builder.Services.AddHostedService<SyncMirrorService>();
-builder.Services.AddOptions<SyncMirrorOptions>();
+builder.Services.AddOptions<SyncMirrorOptions>()
+    .BindConfiguration("Mirror");
 var app = builder.Build();
 
-var path = app.Configuration["MirrorDir"];
+var path = app.Configuration["Mirror:SyncPath"];
 if (Directory.Exists(path))
 {
     app.UseFileServer(new FileServerOptions

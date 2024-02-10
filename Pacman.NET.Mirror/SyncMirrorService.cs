@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using CliWrap;
 using Microsoft.Extensions.Options;
 
@@ -16,20 +17,28 @@ public class SyncMirrorService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var options = _options.CurrentValue;
-        var rsyncCommand = Cli.Wrap("rsync")
-            .WithArguments($"-rlptH --safe-links --delete-delay --delay-updates -P {options.SyncUrl} {options.SyncPath}")
-            .WithStandardOutputPipe(PipeTarget.ToStream(Console.OpenStandardOutput()))
-            .WithStandardErrorPipe(PipeTarget.ToStream(Console.OpenStandardError()));
-        var adminCommand = rsyncCommand
-            .WithTargetFile("sudo")
-            .WithArguments($"{rsyncCommand.TargetFilePath} {rsyncCommand.Arguments}");
+        while(!stoppingToken.IsCancellationRequested)
+        {
+            var options = _options.CurrentValue;
+            var rsyncCommand = Cli.Wrap("rsync")
+                .WithArguments(
+                    $"-rlptH --safe-links --delete-delay --delay-updates {options.SyncUrl} {options.SyncPath}")
+                .WithStandardOutputPipe(PipeTarget.ToStream(Console.OpenStandardOutput()))
+                .WithStandardErrorPipe(PipeTarget.ToStream(Console.OpenStandardError()));
+            var adminCommand = rsyncCommand
+                .WithTargetFile("sudo")
+                .WithArguments($"{rsyncCommand.TargetFilePath} {rsyncCommand.Arguments}");
 
-        var result = await adminCommand.ExecuteAsync(stoppingToken, stoppingToken);
-        
-        _logger.LogInformation("Finished syncing in {Time}", result.RunTime);
+            var result = await adminCommand.ExecuteAsync(stoppingToken, stoppingToken);
+
+            _logger.LogInformation("Finished syncing in {Time}", result.RunTime);
+
+            await Task.Delay(TimeSpan.FromMinutes(360 - Random.Shared.Next(30)), stoppingToken);
+        }
     }
 }
+
+
 
 public class SyncMirrorOptions
 {
