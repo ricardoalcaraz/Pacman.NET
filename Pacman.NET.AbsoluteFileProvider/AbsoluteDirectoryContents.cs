@@ -15,7 +15,7 @@ public class AbsoluteDirectoryContents : IDirectoryContents
     {
         foreach (var directoryContent in _directoryContents)
         {
-            var file = directoryContent.IsDirectory || File.Exists(directoryContent.PhysicalPath) ? directoryContent : new AbsoluteFileInfo(directoryContent.PhysicalPath!);
+            var file = directoryContent.IsDirectory ? directoryContent : new AbsoluteFileInfo(directoryContent.PhysicalPath!);
             yield return file;
         }
     }
