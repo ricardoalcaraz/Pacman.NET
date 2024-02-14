@@ -19,22 +19,46 @@ public class SyncMirrorService : BackgroundService
     {
         while(!stoppingToken.IsCancellationRequested)
         {
-            var options = _options.CurrentValue;
-            var rsyncCommand = Cli.Wrap("rsync")
-                .WithArguments(
-                    $"-rlptH --safe-links --delete-delay --delay-updates {options.SyncUrl} {options.SyncPath}")
-                .WithStandardOutputPipe(PipeTarget.ToStream(Console.OpenStandardOutput()))
-                .WithStandardErrorPipe(PipeTarget.ToStream(Console.OpenStandardError()));
-            var adminCommand = rsyncCommand
-                .WithTargetFile("sudo")
-                .WithArguments($"{rsyncCommand.TargetFilePath} {rsyncCommand.Arguments}");
+            if (!IsRepoSynced())
+            {
+                var options = _options.CurrentValue;
+                var rsyncCommand = Cli.Wrap("rsync")
+                    .WithArguments(
+                        $"-rlptH --safe-links --delete-delay --delay-updates -P --exclude='archive/*' {options.SyncUrl} {options.SyncPath}")
+                    .WithStandardOutputPipe(PipeTarget.ToStream(Console.OpenStandardOutput()))
+                    .WithStandardErrorPipe(PipeTarget.ToStream(Console.OpenStandardError()));
+                var adminCommand = rsyncCommand
+                    .WithTargetFile("sudo")
+                    .WithArguments($"{rsyncCommand.TargetFilePath} {rsyncCommand.Arguments}");
 
-            var result = await adminCommand.ExecuteAsync(stoppingToken, stoppingToken);
+                var result = await adminCommand.ExecuteAsync(stoppingToken, stoppingToken);
+                
+                _logger.LogInformation("Finished syncing in {Time}", result.RunTime);
+            }
 
-            _logger.LogInformation("Finished syncing in {Time}", result.RunTime);
-
-            await Task.Delay(TimeSpan.FromMinutes(360 - Random.Shared.Next(30)), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(360 - Random.Shared.Next(60)), stoppingToken);
         }
+    }
+
+    private bool IsRepoSynced()
+    {
+        var lastSync = File.ReadAllText(Path.Combine(_options.CurrentValue.SyncPath, "lastsync"));
+        if (int.TryParse(lastSync, out var lastSyncUtc))
+        {
+            var syncTime = DateTimeOffset.FromUnixTimeSeconds(lastSyncUtc);
+            if (syncTime + TimeSpan.FromHours(5) <= DateTimeOffset.Now)
+            {
+                _logger.LogInformation("Sync required last sync was {Time}", syncTime);
+                return false;
+            }
+            else
+            {
+                _logger.LogInformation("Repo was last synced at {Time}", syncTime);
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

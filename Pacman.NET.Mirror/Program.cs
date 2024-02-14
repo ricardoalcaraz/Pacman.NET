@@ -20,7 +20,7 @@ if (Directory.Exists(path))
     {
         RequestPath = "/archlinux",
         FileProvider = new AbsoluteProvider(path),
-        RedirectToAppendTrailingSlash = false,
+        RedirectToAppendTrailingSlash = true,
         EnableDirectoryBrowsing = true,
         EnableDefaultFiles = false,
         DirectoryBrowserOptions = { Formatter = new HtmlDirectoryFormatter(HtmlEncoder.Default) },

@@ -17,7 +17,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Pacman.NET.AbsoluteFileProvider\Pacman.NET.AbsoluteFileProvider.csproj" />
-      <ProjectReference Include="..\Pacman.NET\Pacman.NET.csproj" />
     </ItemGroup>
 
     <ItemGroup>
