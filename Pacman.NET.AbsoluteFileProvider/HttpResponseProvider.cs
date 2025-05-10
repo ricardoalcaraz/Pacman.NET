@@ -1,2 +1,0 @@
-namespace Pacman.NET.AbsoluteFileProvider;
-

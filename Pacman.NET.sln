@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Be
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PackageSigning", "PackageSigning\PackageSigning.csproj", "{C61EDC0A-8608-416C-8F4B-A34760B8FA3F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacman.Extensions.FileProviders", "Pacman.Extensions.FileProviders\Pacman.Extensions.FileProviders.csproj", "{415EA8C1-1343-4AB5-932B-7412D36874CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,18 @@ Global
 		{C61EDC0A-8608-416C-8F4B-A34760B8FA3F}.Release|x64.Build.0 = Release|Any CPU
 		{C61EDC0A-8608-416C-8F4B-A34760B8FA3F}.Release|x86.ActiveCfg = Release|Any CPU
 		{C61EDC0A-8608-416C-8F4B-A34760B8FA3F}.Release|x86.Build.0 = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|x64.Build.0 = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Debug|x86.Build.0 = Debug|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|x64.ActiveCfg = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|x64.Build.0 = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|x86.ActiveCfg = Release|Any CPU
+		{415EA8C1-1343-4AB5-932B-7412D36874CD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

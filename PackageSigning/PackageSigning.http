@@ -1,0 +1,11 @@
+@PackageSigning_HostAddress = http://localhost:5030
+
+GET {{PackageSigning_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{PackageSigning_HostAddress}}/todos/1
+Accept: application/json
+
+###

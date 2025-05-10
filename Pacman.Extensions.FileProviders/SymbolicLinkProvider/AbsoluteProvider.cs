@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Primitives;
+﻿using System.Collections;
+using Microsoft.Extensions.Primitives;
 
 namespace Pacman.NET.AbsoluteFileProvider;
 
@@ -18,7 +19,7 @@ public class AbsoluteProvider : IFileProvider
 
     public IDirectoryContents GetDirectoryContents(string subpath)
     {
-        return new AbsoluteDirectoryContents(_fileProvider.GetDirectoryContents(subpath));
+        return new MaterializedDirectoryContents();
     }
 
     public IFileInfo GetFileInfo(string subpath)
@@ -36,4 +37,19 @@ public class AbsoluteProvider : IFileProvider
     {
         throw new NotImplementedException();
     }
+}
+
+public class MaterializedDirectoryContents : IDirectoryContents
+{
+    public IEnumerator<IFileInfo> GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public bool Exists { get; }
 }
