@@ -1,0 +1,7 @@
+﻿services:
+  packagecligenerator:
+    image: packagecligenerator
+    build:
+      context: .
+      dockerfile: PackageCliGenerator/Dockerfile
+
