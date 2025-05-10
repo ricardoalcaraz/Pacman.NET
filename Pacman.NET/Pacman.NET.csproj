@@ -5,7 +5,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
       <UserSecretsId>40a9de3a-627a-462b-bfc9-90b2c0311a25</UserSecretsId>
-      <TargetFramework>net8.0</TargetFramework>
+      <TargetFramework>net10.0</TargetFramework>
+      <LangVersion>default</LangVersion>
   </PropertyGroup>
 
     <ItemGroup>

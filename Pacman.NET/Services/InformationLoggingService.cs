@@ -6,7 +6,7 @@ namespace Pacman.NET.Services;
 public class InformationLoggingService : BackgroundService
 {
     private readonly ILogger<InformationLoggingService> _logger;
-    private readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
+    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
         WriteIndented = true

@@ -1,6 +1,7 @@
 namespace Pacman.NET.IntegrationTests;
 
-public class ConfigParserTests : WebAppFixture
+public class 
+    ConfigParserTests : WebAppFixture
 {
     private string _mirrorlist = File.ReadAllText("./Config/Mirrorlist");
 
