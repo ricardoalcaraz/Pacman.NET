@@ -18,7 +18,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Pacman.Extensions.FileProviders\Pacman.Extensions.FileProviders.csproj" />
-      <ProjectReference Include="..\Pacman.NET.AbsoluteFileProvider\Pacman.NET.AbsoluteFileProvider.csproj" />
     </ItemGroup>
 
     <ItemGroup>

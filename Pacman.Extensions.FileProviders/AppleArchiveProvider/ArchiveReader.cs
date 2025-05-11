@@ -2,18 +2,19 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
-namespace Pacman.NET.Utilities;
+namespace Pacman.Extensions.FileProviders.AppleArchiveProvider;
 
 /// <summary>
 ///     Decode a tarball and create a directory map of all files that live inside
 /// </summary>
-public class TarParser
+public class ArchiveReader
 {
-    private readonly ILogger<TarParser> _logger;
+    private readonly ILogger<ArchiveReader> _logger;
 
 
-    public TarParser(ILogger<TarParser> logger)
+    public ArchiveReader(ILogger<ArchiveReader> logger)
     {
         _logger = logger;
     }

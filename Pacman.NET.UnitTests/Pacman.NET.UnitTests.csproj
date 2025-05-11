@@ -23,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Pacman.Extensions.FileProviders\Pacman.Extensions.FileProviders.csproj" />
       <ProjectReference Include="..\Pacman.NET.Utilities\Pacman.NET.Utilities.csproj" />
       <ProjectReference Include="..\Pacman.NET\Pacman.NET.csproj" />
     </ItemGroup>
