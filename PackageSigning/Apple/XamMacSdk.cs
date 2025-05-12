@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace Xamarin.MacDev;
 
-public sealed class XamMacSdk : IMonoMacSdk
+public sealed class XamMacSdk
 {
     static readonly AppleSdkVersion[] MacOSXSdkVersions = {
         AppleSdkVersion.V10_7,

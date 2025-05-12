@@ -11,7 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Xamarin.MacDev;
 
-public class AppleCodeSigningIdentity
+public record AppleCodeSigningIdentity
 {
     public string CommonName { get { return Keychain.GetCertificateCommonName(Certificate); } }
     public X509Certificate2 Certificate { get; private set; }

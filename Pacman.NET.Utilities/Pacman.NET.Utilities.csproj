@@ -10,7 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="CliWrap" Version="3.6.4" />
+      <PackageReference Include="CliWrap" Version="3.9.0-alpha.1" />
     </ItemGroup>
 
 </Project>

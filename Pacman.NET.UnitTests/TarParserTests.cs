@@ -11,8 +11,8 @@ public class ArchiveReaderTests
     public async Task ReadHeader_ContainsValidInfo_ShouldSucceed()
     {
         await using var tarFile = File.Open($"./Content/core.db", FileMode.Open);
-        var ArchiveReader = new ArchiveReader(new NullLogger<ArchiveReader>());
-        await ArchiveReader.ParseTarFile(tarFile);
+        var archiveReader = new ArchiveReader(tarFile);
+        await archiveReader.ParseTarFile(tarFile);
         //Assert.Fail();
     }
 

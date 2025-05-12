@@ -21,10 +21,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="CliWrap" Version="3.6.6" />
-      <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="8.0.0-preview.4.23259.5" />
-      <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0-preview.4.23259.5" />
-      <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.0-preview.4.23259.5" />
+      <PackageReference Include="CliWrap" Version="3.9.0-alpha.1" />
+      <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="10.0.0-preview.3.25171.5" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.0-preview.3.25171.5" />
+      <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0-preview.3.25171.5" />
     </ItemGroup>
 
 </Project>

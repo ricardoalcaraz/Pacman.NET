@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Pacman.NET.Middleware;
 
@@ -101,3 +102,15 @@ Console.Error.WriteLine("Starting program...");
 
 app.Run();
 Console.Error.WriteLine("Terminating program...");
+
+public class JsonDirectoryFormatter : IDirectoryFormatter
+{
+    public Task GenerateContentAsync(HttpContext context, IEnumerable<IFileInfo> contents)
+    {
+        var bodyStream = context.Response.Body;
+        context.Response.Body = new MemoryStream();
+        
+        return Task.CompletedTask;
+    }
+
+}

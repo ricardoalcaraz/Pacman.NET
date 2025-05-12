@@ -39,7 +39,7 @@ public class Keychain
 {
     const string CoreFoundationLib = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
     const string SecurityLib = "/System/Library/Frameworks/Security.framework/Security";
-    //const string SystemLib = "/usr/lib/libSystem.dylib";
+    const string SystemLib = "/usr/lib/libSystem.dylib";
 
     public static Keychain Default = new(IntPtr.Zero);
 
@@ -136,8 +136,9 @@ public class Keychain
 
     // Note: SecIdentitySearch* has been replaced with SecItemCopyMatching
 
-    //[DllImport (SecurityLib)]
-    //OSStatus SecItemCopyMatching (CFDictionaryRef query, CFTypeRef *result);
+    [DllImport(SecurityLib)]
+
+    static extern unsafe IntPtr SecItemAdd (IntPtr query, IntPtr *result);
 
     #endregion
 

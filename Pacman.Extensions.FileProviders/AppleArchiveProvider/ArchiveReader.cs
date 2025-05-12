@@ -3,23 +3,15 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pacman.Extensions.FileProviders.AppleArchiveProvider;
 
 /// <summary>
 ///     Decode a tarball and create a directory map of all files that live inside
 /// </summary>
-public class ArchiveReader
+public class ArchiveReader(Stream stream, bool leaveOpen = false) : IDisposable, IAsyncDisposable
 {
-    private readonly ILogger<ArchiveReader> _logger;
-
-
-    public ArchiveReader(ILogger<ArchiveReader> logger)
-    {
-        _logger = logger;
-    }
-
-
     /// <summary>
     ///     Read the header information from the stream
     /// </summary>
@@ -47,7 +39,6 @@ public class ArchiveReader
         var restOfFile = Encoding.UTF8.GetString(headerBuffer[500..512]);
         if (typeFlag == "x")
         {
-            _logger.LogDebug("Extended metadata detected for {Name}", fileName);
             var metadata = Encoding.UTF8.GetString(headerBuffer[512..1024].TakeWhile(c => c != 0).ToArray()).Trim();
         }
 
@@ -128,7 +119,6 @@ public class ArchiveReader
             } while (sbuffer[..bytesRead] is not [.., 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
             var finalString = stringBuilder2.ToString().Trim();
-            _logger.LogInformation("{File}", finalString);
             ArrayPool<byte>.Shared.Return(sbuffer);
             //
             // var line = await streamReader.ReadLineAsync() ?? string.Empty;
@@ -164,7 +154,6 @@ public class ArchiveReader
         }
 
         stopWatch.Stop();
-        _logger.LogInformation("Ran in {Time}s", stopWatch.Elapsed.TotalSeconds);
     }
 
 
@@ -182,6 +171,16 @@ public class ArchiveReader
     public Task<bool> IsCompressed(string path)
     {
         return Task.FromResult(true);
+    }
+
+    public void Dispose()
+    {
+        // TODO release managed resources here
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await stream.DisposeAsync();
     }
 }
 

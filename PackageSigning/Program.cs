@@ -9,13 +9,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
-//var secKey = Keychain.Create("her.keychain", "test");
-var openChain = Keychain.Open("/Users/rai/Library/Keychains/login.keychain");
-
-var identities = openChain.GetAllSigningIdentities();
 var app = builder.Build();
-X509CertificateLoader.LoadPkcs12CollectionFromFile("", "", X509KeyStorageFlags.PersistKeySet,
-    Pkcs12LoaderLimits.Defaults);
 var sampleTodos = new Todo[]
 {
     new(1, "Walk the dog"),
@@ -32,7 +26,16 @@ todosApi.MapGet("/{id}", (int id) =>
         ? Results.Ok(todo)
         : Results.NotFound());
 
-app.Run();
+//app.Run();
+
+
+//var secKey = Keychain.Create("her.keychain", "test");
+var openChain = Keychain.Open("/Users/rai/Library/Keychains/login.keychain");
+var identities = openChain.GetAllSigningIdentities();
+foreach (AppleCodeSigningIdentity appleCodeSigningIdentity in identities)
+{
+    app.Logger.LogInformation("{0}", appleCodeSigningIdentity);
+}
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 

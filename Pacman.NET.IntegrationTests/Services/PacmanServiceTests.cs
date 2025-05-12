@@ -2,10 +2,9 @@ using static NUnit.Framework.Assert;
 
 namespace Pacman.NET.IntegrationTests.Services;
 
-
-public class PacmanServiceTests : WebAppFixture
+public class PacmanServiceTests : WebAppFixture, IDisposable
 {
-    private IPacmanService _pacmanService = null!;
+    private IPacmanService _pacmanService;
 
     [SetUp]
     public void Init()
@@ -19,5 +18,11 @@ public class PacmanServiceTests : WebAppFixture
         bool isValid = await _pacmanService.TestDependencies(CancellationToken.None);
         Console.WriteLine(isValid);
         That(isValid, Is.True);
+    }
+
+    [TearDown]
+    public void Dispose()
+    {
+        _pacmanService.Dispose();
     }
 }
