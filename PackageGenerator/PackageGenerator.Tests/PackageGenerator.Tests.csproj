@@ -11,7 +11,19 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit" Version="1.1.2" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.0-preview.3.25172.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.3.25171.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0-preview-25107-01" />
+        <PackageReference Include="System.IO.Pipelines" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="System.Threading.Channels" Version="10.0.0-preview.3.25171.5" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
