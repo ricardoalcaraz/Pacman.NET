@@ -6,13 +6,19 @@ namespace Pacman.Extensions.FileProviders.TarProvider;
 
 public class TarArchiveProvider(TarReader reader) : IDirectoryContents, IDisposable, IFileProvider
 {
+    private Dictionary<string, TarEntry> entries = new();
+    
     public IFileInfo GetFileInfo(string subpath)
     {
+        if (entries.TryGetValue(subpath, out var entry))
+        {
+            return new TarEntryInfo(subpath);
+        }
 
-        return new TarEntryInfo("");
+        return new NotFoundFileInfo(subpath);
     }
 
-    
+
 
     public IChangeToken Watch(string filter)
     {
