@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 using Xamarin.MacDev;
 
+
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
