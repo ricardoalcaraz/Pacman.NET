@@ -12,7 +12,7 @@ public class TarArchiveProvider(TarReader reader) : IDirectoryContents, IDisposa
     {
         if (entries.TryGetValue(subpath, out var entry))
         {
-            return new TarEntryInfo(subpath);
+            return new TarEntryInfo(entry);
         }
 
         return new NotFoundFileInfo(subpath);
@@ -31,7 +31,8 @@ public class TarArchiveProvider(TarReader reader) : IDirectoryContents, IDisposa
     {
         while (reader.GetNextEntry() is TarEntry entry)
         {
-            yield return new TarEntryInfo(entry.Name);
+            entries.Add(entry.Name, entry);
+            yield return new TarEntryInfo(entry);
         }
     }
 

@@ -12,7 +12,5 @@
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolutionBuilderNext/OutputVerbosityLevel/@EntryValue">Detailed</s:String>
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolutionBuilderNext/FileVerbosityLevel/@EntryValue">Detailed</s:String>
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=5426abcb_002Dc3d3_002D4f01_002Da0a2_002Dffdc9a41eb4d/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="ReadHeader_ContainsValidInfo_ShouldSucceed" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
-  &lt;TestAncestor&gt;
-    &lt;TestId&gt;MSTest::29294BF2-0A54-4831-81A0-FF09352F2D1F::net10.0::Pacman.NET.UnitTests.ArchiveReaderTests.ReadHeader_ContainsValidInfo_ShouldSucceed&lt;/TestId&gt;
-  &lt;/TestAncestor&gt;
+  &lt;Solution /&gt;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

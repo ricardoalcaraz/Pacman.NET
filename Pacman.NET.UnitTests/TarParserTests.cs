@@ -9,6 +9,16 @@ namespace Pacman.NET.UnitTests;
 [TestClass]
 public class ArchiveReaderTests
 {
+    [TestMethod]
+    [DataRow("Program.cs")]
+    public void CodeFileChecker_IsCodeFile(string filePath)
+    {
+        var isCodeFile = FileChecker.IsCodeFile(filePath);
+        
+        Assert.IsTrue(isCodeFile);
+    }
+    
+    
     private readonly string _tempFile = Path.GetTempFileName();
     
     [TestInitialize]
