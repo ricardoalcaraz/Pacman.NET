@@ -2,13 +2,9 @@ using System.Formats.Tar;
 
 namespace Pacman.Extensions.FileProviders.TarProvider;
 
-public record TarEntryInfo(TarEntry tarEntry) : IFileInfo
+public class TarEntryInfo(TarEntry tarEntry) : IFileInfo
 {
-    public Stream CreateReadStream()
-    {
-        throw new NotImplementedException();
-    }
-
+    public Stream CreateReadStream() => tarEntry.DataStream ?? Stream.Null;
     public bool Exists => true;
     public long Length => tarEntry.Length;
 

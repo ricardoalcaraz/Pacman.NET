@@ -6,11 +6,11 @@ namespace Pacman.Extensions.FileProviders.TarProvider;
 
 public class TarArchiveProvider(TarReader reader) : IDirectoryContents, IDisposable, IFileProvider
 {
-    private Dictionary<string, TarEntry> entries = new();
+    private readonly Dictionary<string, TarEntry> _entries = [];
     
     public IFileInfo GetFileInfo(string subpath)
     {
-        if (entries.TryGetValue(subpath, out var entry))
+        if (_entries.TryGetValue(subpath, out var entry))
         {
             return new TarEntryInfo(entry);
         }
@@ -31,7 +31,7 @@ public class TarArchiveProvider(TarReader reader) : IDirectoryContents, IDisposa
     {
         while (reader.GetNextEntry() is TarEntry entry)
         {
-            entries.Add(entry.Name, entry);
+            _entries.Add(entry.Name, entry);
             yield return new TarEntryInfo(entry);
         }
     }
